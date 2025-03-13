@@ -39,7 +39,7 @@ app.set("trust proxy", true);
 app.use(helmet());
 app.use(
   cors({
-    origin: `${process.env.FRONTEND_URL}`, // Allow only this origin
+    origin: `*`, // Allow only this origin
     credentials: true,
   })
 ); // Handles Cross-Origin Requests
