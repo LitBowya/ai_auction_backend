@@ -1,110 +1,72 @@
-import fs from "fs/promises";
+import { pipeline } from "@xenova/transformers";
+import fs from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
-import { AutoProcessor, CLIPVisionModelWithProjection, RawImage } from "@xenova/transformers";
-import sharp from "sharp";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const tempDir = path.join(__dirname, "temp");
-
-// Ensure temp directory exists
-try {
-  await fs.mkdir(tempDir, { recursive: true });
-  console.log("[SUCCESS] Temporary directory created.");
-} catch (error) {
-  console.error("[ERROR] Failed to create temp directory:", error);
-  throw new Error("Temp directory creation failed. Cannot proceed.");
-}
-
-console.log("[DEBUG] Using local CLIP model for fraud detection.");
-
-const processor = await AutoProcessor.from_pretrained("Xenova/clip-vit-base-patch16");
-const vision_model = await CLIPVisionModelWithProjection.from_pretrained("Xenova/clip-vit-base-patch16");
+let clipModel;
 
 /**
- * Save image buffer as a temporary file
- * @param {Buffer} imageBuffer - Raw image buffer
- * @returns {Promise<string>} - Path to saved image file
+ * Load OpenAI CLIP for AI-based fraud detection
  */
-const saveTempImage = async (imageBuffer) => {
-  if (!(await fs.access(tempDir).then(() => true).catch(() => false))) {
-  throw new Error("Temp directory does not exist. Cannot save temporary image.");
-}
-const tempPath = path.join(tempDir, `temp_${Date.now()}.jpg`);
-  await sharp(imageBuffer).jpeg().toFile(tempPath);
-  return tempPath;
-};
-
-/**
- * Delete all temporary files
- */
-const clearTempDirectory = async () => {
+const loadCLIPModel = async () => {
   try {
-    const files = await fs.readdir(tempDir);
-    for (const file of files) {
-      await fs.unlink(path.join(tempDir, file));
-    }
-    console.log("[SUCCESS] Temporary directory cleared.");
+    console.log("[DEBUG] Loading OpenAI CLIP model...");
+    clipModel = await pipeline(
+      "zero-shot-image-classification",
+      "Xenova/clip-vit-base-patch32"
+    );
+    console.log("[SUCCESS] OpenAI CLIP model loaded.");
   } catch (error) {
-    console.warn("[WARNING] Failed to clear temp directory:", error);
+    console.error("[ERROR] Failed to load OpenAI CLIP model:", error);
   }
 };
 
+// Load the model at startup
+loadCLIPModel();
+
 /**
- * Detect AI-generated or fraudulent images using local CLIP model
+ * Detect AI-generated or fraudulent images using OpenAI CLIP
  * @param {Buffer} imageBuffer - Image buffer
- * @returns {Promise<{ isFraud: boolean, label: string, confidence: number, message: string }>}
+ * @returns {Promise<{ isFraud: boolean, label: string, confidence: number }>}
  */
 export const detectFraudulentImage = async (imageBuffer) => {
   try {
-    console.log("[DEBUG] Running AI fraud detection locally...");
+    if (!clipModel) {
+      console.warn("[WARNING] CLIP model not loaded. Skipping image security check.");
+      return { isFraud: false, label: "Unknown", confidence: 0 };
+    }
 
-    const tempImagePath = await saveTempImage(imageBuffer);
-    const image = await RawImage.decode(imageBuffer);
-    const image_inputs = await processor(image);
-    const { image_embeds } = await vision_model(image_inputs);
+    console.log("[DEBUG] Running AI fraud detection on image...");
 
-    console.log("[DEBUG] Image embeddings computed.");
+    // 🔹 Step 1: Save the buffer as a temporary image file (CLIP expects a file path)
+    const tempImagePath = path.join("/tmp", `temp_image_${Date.now()}.jpg`);
+    fs.writeFileSync(tempImagePath, imageBuffer);
 
-    // Placeholder similarity check
-    const computeSimilarity = (vectorA, vectorB) => {
-  const dotProduct = vectorA.reduce((sum, val, i) => sum + val * vectorB[i], 0);
-  const normA = Math.sqrt(vectorA.reduce((sum, val) => sum + val * val, 0));
-  const normB = Math.sqrt(vectorB.reduce((sum, val) => sum + val * val, 0));
-  return normA === 0 || normB === 0 ? 0 : dotProduct / (normA * normB);
-};
+    // 🔹 Step 2: Run CLIP model using the file path
+    const results = await clipModel(tempImagePath, [
+      "AI-generated",
+      "Human-created",
+      "Fraudulent",
+    ]);
+    console.log("[DEBUG] CLIP Model Results:", results);
 
-// Example similarity computation
-// Load known AI-generated embeddings from file (if exists)
-const embeddingsFilePath = path.join(__dirname, "known_ai_embeddings.json");
-let knownAIEmbeddings = [];
-if (await fs.access(embeddingsFilePath).then(() => true).catch(() => false)) {
-  const data = await fs.readFile(embeddingsFilePath, "utf-8");
-  knownAIEmbeddings = JSON.parse(data);
-  console.log("[DEBUG] Loaded AI-generated embeddings from file.");
-} else {
-  console.log("[DEBUG] No pre-existing AI-generated embeddings found. Starting fresh.");
-}
+    // 🔹 Step 3: Remove the temporary file after processing
+    fs.unlinkSync(tempImagePath);
 
-// Compare against all known AI-generated embeddings
-let maxSimilarity = 0;
-for (const knownEmbedding of knownAIEmbeddings) {
-  const similarity = computeSimilarity(image_embeds.data, knownEmbedding);
-  maxSimilarity = Math.max(maxSimilarity, similarity);
-}
-const confidence = maxSimilarity;
-    const isAI = confidence > 0.6;
-    const label = isAI ? "AI-generated" : "Human-created";
+    // 🔹 Step 4: Extract classification data
+    const { label, score } = results[0]; // Highest confidence label
 
-    console.log(`[DEBUG] Image classified as ${label} with confidence ${confidence}`);
+    console.log(`[DEBUG] Image classified as ${label} with confidence ${score}`);
 
-    await clearTempDirectory(); // Clean up temp files
+    // 🔹 Step 5: Flag the image if AI-generated or fraudulent
+    if ((label === "AI-generated" || label === "Fraudulent") && score > 0.5) {
+      console.warn("[SECURITY ALERT] AI-generated or fraudulent image detected!");
+      return { isFraud: true, label, confidence: score };
+    }
 
-    return { isFraud: isAI, label, confidence, message: `This image is classified as ${label} with ${confidence.toFixed(2)} confidence.` };
+    console.log("[SUCCESS] Image passed fraud check.");
+    return { isFraud: false, label, confidence: score };
   } catch (error) {
-    console.error("[ERROR] Fraud detection failed:", error);
-    return { isFraud: false, label: "Error", confidence: 0, message: "An error occurred during fraud detection." };
+    console.error("[ERROR] Fraud detection failed using OpenAI CLIP:", error);
+    return { isFraud: false, label: "Error", confidence: 0 };
   }
 };
