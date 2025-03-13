@@ -41,7 +41,7 @@ export const placeBid = async (req, res) => {
     }
 
     // AI-based bot detection
-    if (await detectBot(userId)) {
+    if (await detectBot(userId, bidAmount)) {
       return res.status(403).json({ message: "Bot bidding detected!" });
     }
 

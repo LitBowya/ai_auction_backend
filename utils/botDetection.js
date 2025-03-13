@@ -2,23 +2,18 @@ import fs from "fs";
 import path from "path";
 import { promisify } from "util";
 import { fileURLToPath } from "url";
-import { pipeline } from "@xenova/transformers";
+import { AutoProcessor, CLIPTextModelWithProjection, AutoTokenizer } from "@xenova/transformers";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const unlinkAsync = promisify(fs.unlink);
 
-// ✅ Set cache directory globally before model loads
-const cacheDir = "/tmp/xenova_cache";
-if (!fs.existsSync(cacheDir)) {
-  fs.mkdirSync(cacheDir, { recursive: true });
-}
-process.env.XDG_CACHE_HOME = cacheDir;
-process.env.TRANSFORMERS_CACHE = cacheDir;
-process.env.XENOVA_CACHE_DIR = cacheDir;
+console.log("[DEBUG] Using local CLIP model for bot detection.");
 
-console.log(`[DEBUG] Using cache directory: ${cacheDir}`);
+// Load tokenizer and text model
+const tokenizer = await AutoTokenizer.from_pretrained("Xenova/clip-vit-base-patch16");
+const text_model = await CLIPTextModelWithProjection.from_pretrained("Xenova/clip-vit-base-patch16");
 
 /**
  * Clear all files from the temporary directory before execution
@@ -39,70 +34,39 @@ const clearTempDirectory = () => {
 
 clearTempDirectory();
 
-let clipModel;
-
 /**
- * Load OpenAI CLIP model for AI fraud detection
+ * Detect AI-based bot activity using CLIP text embeddings
+ * @param {string} userId - User identifier
+ * @param {string} bidAmount - The message submitted with the bid (if any)
+ * @returns {Promise<boolean>} - True if bot detected, false otherwise
  */
-const loadCLIPModel = async () => {
+export const detectBot = async (userId, bidAmount = "") => {
   try {
-    console.log("[DEBUG] Loading OpenAI CLIP model...");
-    clipModel = await pipeline(
-      "zero-shot-image-classification",
-      "Xenova/clip-vit-base-patch32"
-    );
-    console.log("[SUCCESS] OpenAI CLIP model loaded.");
-  } catch (error) {
-    console.error("[ERROR] Failed to load OpenAI CLIP model:", error);
-  }
-};
-
-// Load model at startup
-loadCLIPModel();
-
-/**
- * Convert image buffer to a JPEG and save temporarily
- * @param {Buffer} imageBuffer - Raw image buffer
- * @returns {Promise<string>} - Path to temporary image file
- */
-const saveTempImage = async (imageBuffer) => {
-  const tempDir = path.join(__dirname, "temp");
-  if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
-
-  const tempPath = path.join(tempDir, `temp_${Date.now()}.jpg`);
-  await sharp(imageBuffer).jpeg().toFile(tempPath);
-  return tempPath;
-};
-/**
- * Convert image buffer to a JPEG and save temporarily
- * @param {Buffer} imageBuffer - Raw image buffer
- * @returns {Promise<string>} - Path to temporary image file
-
-/**
- * AI-based bot detection
- */
-export const detectBot = async (userId, imageBuffer = null) => {
-  try {
-    // ✅ Ensure model is loaded
-    clipModel = await loadCLIPModel();
-    if (!clipModel) return false;
-
-    // ✅ Check for flagged bot users
-    const botUsers = ["bot123", "testBot"];
+    const botUsers = ["bot123", "testBot", "autobidder"];
     if (botUsers.includes(userId)) {
       console.warn(`[SECURITY ALERT] Bot detected: ${userId}`);
       return true;
     }
 
-    // ✅ Analyze image if provided
-    if (imageBuffer) {
-      const results = await clipModel(imageBuffer, [
-        "AI-generated",
-        "Human-created",
-      ]);
+    if (bidAmount) {
+      console.log("[DEBUG] Analyzing bid message for bot detection...");
+      const text_inputs = tokenizer([bidAmount], { padding: true, truncation: true });
+      const { text_embeds } = await text_model(text_inputs);
 
-      if (results[0].label === "AI-generated" && results[0].score > 0.8) {
-        console.warn("[SECURITY ALERT] Bot detected from image analysis!");
+      // Placeholder: Define known bot-like bid message embeddings
+      const knownBotEmbeddings = [
+        new Float32Array(512).fill(0.2), // Replace with real bot message embeddings
+      ];
+
+      let maxSimilarity = 0;
+      for (const knownEmbedding of knownBotEmbeddings) {
+        const similarity = text_embeds.data.reduce((sum, val, i) => sum + val * knownEmbedding[i], 0);
+        maxSimilarity = Math.max(maxSimilarity, similarity);
+      }
+
+      console.log(`[DEBUG] Maximum similarity to bot-like messages: ${maxSimilarity}`);
+      if (maxSimilarity > 0.7) {
+        console.warn("[SECURITY ALERT] Bot detected from bid message analysis!");
         return true;
       }
     }
