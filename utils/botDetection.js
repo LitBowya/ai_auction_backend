@@ -35,6 +35,16 @@ const clearTempDirectory = () => {
 clearTempDirectory();
 
 /**
+ * Compute cosine similarity between two vectors
+ */
+const computeSimilarity = (vectorA, vectorB) => {
+  const dotProduct = vectorA.reduce((sum, val, i) => sum + val * vectorB[i], 0);
+  const normA = Math.sqrt(vectorA.reduce((sum, val) => sum + val * val, 0));
+  const normB = Math.sqrt(vectorB.reduce((sum, val) => sum + val * val, 0));
+  return dotProduct / (normA * normB);
+};
+
+/**
  * Detect AI-based bot activity using CLIP text embeddings
  * @param {string} userId - User identifier
  * @param {string} bidAmount - The message submitted with the bid (if any)
@@ -60,7 +70,7 @@ export const detectBot = async (userId, bidAmount = "") => {
 
       let maxSimilarity = 0;
       for (const knownEmbedding of knownBotEmbeddings) {
-        const similarity = text_embeds.data.reduce((sum, val, i) => sum + val * knownEmbedding[i], 0);
+        const similarity = computeSimilarity(text_embeds.data, knownEmbedding);
         maxSimilarity = Math.max(maxSimilarity, similarity);
       }
 

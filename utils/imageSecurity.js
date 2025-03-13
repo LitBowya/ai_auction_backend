@@ -3,7 +3,6 @@ import path from "path";
 import { promisify } from "util";
 import { fileURLToPath } from "url";
 import { AutoProcessor, CLIPVisionModelWithProjection, RawImage } from "@xenova/transformers";
-import cosineSimilarity from "cosine-similarity";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -68,7 +67,10 @@ const processImageBuffer = async (imageBuffer) => {
  * Compute cosine similarity between two vectors
  */
 const computeSimilarity = (vectorA, vectorB) => {
-  return cosineSimilarity(vectorA, vectorB);
+  const dotProduct = vectorA.reduce((sum, val, i) => sum + val * vectorB[i], 0);
+  const normA = Math.sqrt(vectorA.reduce((sum, val) => sum + val * val, 0));
+  const normB = Math.sqrt(vectorB.reduce((sum, val) => sum + val * val, 0));
+  return dotProduct / (normA * normB);
 };
 
 /**
@@ -83,24 +85,18 @@ export const storeAIEmbedding = (embedding) => {
 /**
  * Detect AI-generated or fraudulent images using local CLIP model
  * @param {Buffer} imageBuffer - Image buffer
- * @returns {Promise<{ isFraud: boolean, label: string, confidence: number } | null>}
+ * @returns {Promise<{ isFraud: boolean, label: string, confidence: number }>}
  */
 export const detectFraudulentImage = async (imageBuffer) => {
   try {
     console.log("[DEBUG] Running AI fraud detection locally...");
 
-    // ✅ Convert image buffer to RawImage format
     const image = await processImageBuffer(imageBuffer);
-
-    // ✅ Process the image for the model
     const image_inputs = await processor(image);
-
-    // ✅ Compute image embeddings
     const { image_embeds } = await vision_model(image_inputs);
 
-    console.log("[DEBUG] Image embeddings computed:", image_embeds);
+    console.log("[DEBUG] Image embeddings computed.");
 
-    // ✅ Compare with known AI-generated embeddings
     let maxSimilarity = 0;
     for (const knownEmbedding of knownAIEmbeddings) {
       const similarity = computeSimilarity(image_embeds.data, knownEmbedding);
@@ -109,20 +105,14 @@ export const detectFraudulentImage = async (imageBuffer) => {
 
     console.log(`[DEBUG] Maximum similarity to AI-generated images: ${maxSimilarity}`);
 
-    // ✅ Classification based on similarity threshold
     const isAI = maxSimilarity > 0.6;
     const label = isAI ? "AI-generated" : "Human-created";
     const confidence = maxSimilarity;
 
     console.log(`[DEBUG] Image classified as ${label} with confidence ${confidence}`);
 
-    // ✅ Store embedding if it's AI-generated
     if (isAI) {
       storeAIEmbedding(image_embeds.data);
-    }
-
-    // ✅ Flag as fraud if confidence is high
-    if (isAI) {
       console.warn("[SECURITY ALERT] AI-generated or fraudulent image detected!");
       return { isFraud: true, label, confidence };
     }
@@ -131,6 +121,6 @@ export const detectFraudulentImage = async (imageBuffer) => {
     return { isFraud: false, label, confidence };
   } catch (error) {
     console.error("[ERROR] Fraud detection failed:", error);
-    return null;
+    return { isFraud: false, label: "Error", confidence: 0 };
   }
 };
