@@ -1,4 +1,4 @@
-import { loadCLIPModel } from "../utils/clipModel.js";
+import { loadCLIPModel } from "./clipModel.js";
 
 let clipModel;
 
