@@ -34,10 +34,12 @@ const app = express();
 swaggerDocs(app);
 
 // Middleware
+// ✅ Trust Vercel's Proxy
+app.set("trust proxy", true);
 app.use(helmet());
 app.use(
   cors({
-    origin: "http://localhost:3000", // Allow only this origin
+    origin: `${process.env.FRONTEND_URL}`, // Allow only this origin
     credentials: true,
   })
 ); // Handles Cross-Origin Requests

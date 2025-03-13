@@ -1,53 +1,30 @@
-import { pipeline } from "@xenova/transformers";
+import { loadCLIPModel } from "../utils/clipModel.js";
 
 let clipModel;
 
 /**
- * Load OpenAI CLIP for AI-based detection (Correct format)
- */
-const loadCLIPModel = async () => {
-  try {
-    clipModel = await pipeline(
-      "zero-shot-image-classification",
-      "Xenova/clip-vit-base-patch32"
-    );
-
-  } catch (error) {
-    console.error("[ERROR] Failed to load OpenAI CLIP model:", error);
-  }
-};
-
-// Load model at startup
-loadCLIPModel();
-/**
- * AI-based bot detection using OpenAI CLIP
- * @param {string} userId - ID of the user placing the bid
- * @param {Buffer} imageBuffer - User profile image or artwork (optional)
- * @returns {Promise<boolean>} - Returns true if bot detected
+ * AI-based bot detection
  */
 export const detectBot = async (userId, imageBuffer = null) => {
   try {
-    if (!clipModel) {
-      console.warn("[WARNING] CLIP model not loaded. Skipping AI detection.");
-      return false;
-    }
+    // ✅ Ensure model is loaded
+    clipModel = await loadCLIPModel();
+    if (!clipModel) return false;
 
-
-    // Example list of suspicious user behavior
-    const botUsers = ["bot123", "testBot"]; // Example flagged bot users
+    // ✅ Check for flagged bot users
+    const botUsers = ["bot123", "testBot"];
     if (botUsers.includes(userId)) {
       console.warn(`[SECURITY ALERT] Bot detected: ${userId}`);
       return true;
     }
 
-    // If an image is provided, run CLIP image classification
+    // ✅ Analyze image if provided
     if (imageBuffer) {
       const results = await clipModel(imageBuffer, [
         "AI-generated",
         "Human-created",
       ]);
 
-      // If AI-generated confidence is high, flag as a bot
       if (results[0].label === "AI-generated" && results[0].score > 0.8) {
         console.warn("[SECURITY ALERT] Bot detected from image analysis!");
         return true;
@@ -57,6 +34,6 @@ export const detectBot = async (userId, imageBuffer = null) => {
     return false;
   } catch (error) {
     console.error("[ERROR] Bot detection failed:", error);
-    return false; // Default to false if detection fails
+    return false;
   }
 };
