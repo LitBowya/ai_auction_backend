@@ -61,6 +61,20 @@ loadCLIPModel();
  * Convert image buffer to a JPEG and save temporarily
  * @param {Buffer} imageBuffer - Raw image buffer
  * @returns {Promise<string>} - Path to temporary image file
+ */
+const saveTempImage = async (imageBuffer) => {
+  const tempDir = path.join(__dirname, "temp");
+  if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+
+  const tempPath = path.join(tempDir, `temp_${Date.now()}.jpg`);
+  await sharp(imageBuffer).jpeg().toFile(tempPath);
+  return tempPath;
+};
+
+/**
+ * Convert image buffer to a JPEG and save temporarily
+ * @param {Buffer} imageBuffer - Raw image buffer
+ * @returns {Promise<string>} - Path to temporary image file
 
 /**
  * AI-based bot detection
