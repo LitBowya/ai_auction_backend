@@ -8,7 +8,6 @@ import dotenv from "dotenv";
 import bodyParser from "body-parser";
 import cookieParser from "cookie-parser";
 import connectDB from "./config/db.js";
-import swaggerDocs from "./config/swagger.js";
 
 // Import routes
 import authRoutes from "./routes/authRoutes.js";
@@ -31,7 +30,6 @@ connectDB();
 
 const app = express();
 
-swaggerDocs(app);
 
 // Middleware
 // ✅ Trust Vercel's Proxy
