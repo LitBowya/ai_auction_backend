@@ -60,7 +60,7 @@ clearTempDirectory();
  * @returns {Promise<RawImage>} - Processed image object
  */
 const processImageBuffer = async (imageBuffer) => {
-  return await RawImage.fromBuffer(imageBuffer);
+  return await RawImage.decode(imageBuffer);
 };
 
 /**
