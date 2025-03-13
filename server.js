@@ -35,10 +35,12 @@ swaggerDocs(app);
 
 // Middleware
 app.use(helmet());
-app.use(cors({
+app.use(
+  cors({
     origin: "http://localhost:3000", // Allow only this origin
-    credentials: true
-}));  // Handles Cross-Origin Requests
+    credentials: true,
+  })
+); // Handles Cross-Origin Requests
 app.use(cookieParser());
 app.use(compression());
 app.use(bodyParser.json());
@@ -49,6 +51,10 @@ app.use(xss());
 // Rate Limiting
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
 app.use(limiter);
+
+app.get("/", (req, res) => {
+  res.status(200).json({ success: true, message: "API is running!" });
+});
 
 // Routes
 app.use("/api/auth", authRoutes);
@@ -66,8 +72,6 @@ app.use("/api/", apiLimiter);
 // Error handling middleware
 app.use(notFound);
 app.use(errorHandler);
-
-
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
