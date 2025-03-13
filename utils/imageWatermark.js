@@ -12,30 +12,22 @@ const watermarkPath = path.join("assets", "artbid.png");
  */
 export const applyWatermark = async (imageBuffer) => {
   try {
-    console.log("[DEBUG] Applying watermark...");
 
     if (!imageBuffer || imageBuffer.length === 0) {
       throw new Error("Empty image buffer provided to watermark function");
     }
 
-    console.log(
-      "[DEBUG] Image buffer size before watermarking:",
-      imageBuffer.length,
-      "bytes"
-    );
 
     if (!(await fileExists(watermarkPath))) {
       throw new Error("Watermark file missing!");
     }
 
-    console.log("[DEBUG] Watermark file found at:", watermarkPath);
 
     const watermark = await sharp(watermarkPath)
       .resize({ width: 100 }) // Resize watermark dynamically
       .png()
       .toBuffer();
 
-    console.log("[DEBUG] Applying watermark to image...");
     const watermarkedBuffer = await sharp(imageBuffer)
       .toFormat("jpeg")
       .composite([
@@ -47,7 +39,6 @@ export const applyWatermark = async (imageBuffer) => {
       ])
       .toBuffer();
 
-    console.log("[SUCCESS] Watermarking completed.");
     return watermarkedBuffer;
   } catch (error) {
     console.error("[ERROR] Watermarking failed:", error);

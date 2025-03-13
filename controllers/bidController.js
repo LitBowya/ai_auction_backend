@@ -14,7 +14,6 @@ export const placeBid = async (req, res) => {
     const { bidAmount } = req.body;
     const userId = req.user._id;
 
-    console.log(`[DEBUG] New bid attempt: $${bidAmount} by User ${userId}`);
 
     // Retrieve auction
     const auction = await Auction.findById(auctionId)
@@ -107,7 +106,6 @@ export const placeBid = async (req, res) => {
       highestBidder: userId.toString(),
     });
 
-    console.log(`[SUCCESS] New bid placed: $${bidAmount} by User ${userId}`);
 
     res.status(201).json({
       message: "Bid placed successfully",
@@ -122,7 +120,6 @@ export const placeBid = async (req, res) => {
 export const getAuctionBids = async (req, res) => {
   try {
     const { auctionId } = req.params;
-    console.log(`[DEBUG] Fetching bids for Auction: ${auctionId}`);
 
     // Find all bids for the auction, sorted by highest amount
     const bids = await Bid.find({ auction: auctionId })
@@ -144,7 +141,6 @@ export const getAuctionBids = async (req, res) => {
 export const getUserBids = async (req, res) => {
   try {
     const userId = req.user._id;
-    console.log(`[DEBUG] Fetching bids for User: ${userId}`);
 
     const bids = await Bid.find({ bidder: userId })
       .populate("auction", "title highestBid biddingEndTime")
@@ -165,7 +161,6 @@ export const getUserBids = async (req, res) => {
 export const getAuctionHighestBid = async (req, res) => {
   try {
     const { auctionId } = req.params;
-    console.log(`[DEBUG] Fetching highest bid for Auction: ${auctionId}`);
 
     // Find auction
     const auction = await Auction.findById(auctionId).populate(
@@ -192,7 +187,6 @@ export const getAuctionHighestBid = async (req, res) => {
 
 export const autoEndAuction = async () => {
   try {
-    console.log("[DEBUG] Checking for expired auctions...");
 
     const now = new Date();
     const expiredAuctions = await Auction.find({
@@ -203,10 +197,8 @@ export const autoEndAuction = async () => {
     for (const auction of expiredAuctions) {
       auction.status = "completed";
       await auction.save();
-      console.log(`[SUCCESS] Auction ${auction._id} has ended.`);
     }
 
-    console.log("[INFO] Expired auctions check completed.");
   } catch (error) {
     console.error("[ERROR] Auto-ending auctions failed:", error.message);
   }

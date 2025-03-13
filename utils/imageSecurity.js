@@ -23,7 +23,6 @@ const clearTempDirectory = () => {
         console.warn(`[WARNING] Failed to delete ${file}:`, error);
       }
     });
-    console.log("[SUCCESS] Temporary directory cleared.");
   }
 };
 
@@ -36,12 +35,10 @@ let clipModel;
  */
 const loadCLIPModel = async () => {
   try {
-    console.log("[DEBUG] Loading OpenAI CLIP model...");
     clipModel = await pipeline(
       "zero-shot-image-classification",
       "Xenova/clip-vit-base-patch32"
     );
-    console.log("[SUCCESS] OpenAI CLIP model loaded.");
   } catch (error) {
     console.error("[ERROR] Failed to load OpenAI CLIP model:", error);
   }
@@ -77,8 +74,6 @@ export const detectFraudulentImage = async (imageBuffer) => {
       return null;
     }
 
-    console.log("[DEBUG] Running AI fraud detection on image...");
-
     // ✅ Save image temporarily
     imagePath = await saveTempImage(imageBuffer);
 
@@ -89,13 +84,8 @@ export const detectFraudulentImage = async (imageBuffer) => {
       "Fraudulent",
     ]);
 
-    console.log("[DEBUG] CLIP Model Results:", results);
-
     // ✅ Extract classification results
     const { label, score } = results[0];
-    console.log(
-      `[DEBUG] Image classified as ${label} with confidence ${score}`
-    );
 
     // ✅ Flag as fraud if confidence is high
     if ((label === "AI-generated" || label === "Fraudulent") && score > 0.6) {
@@ -105,7 +95,6 @@ export const detectFraudulentImage = async (imageBuffer) => {
       return { isFraud: true, label, confidence: score };
     }
 
-    console.log("[SUCCESS] Image passed fraud check.");
     return { isFraud: false, label, confidence: score };
   } catch (error) {
     console.error("[ERROR] Fraud detection failed:", error);

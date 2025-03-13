@@ -131,7 +131,6 @@ export const unsuspendAuction = async (req, res) => {
 
 export const getAdminInsights = async (req, res) => {
   try {
-    console.log("[DEBUG] Fetching admin insights...");
 
     const totalUsers = await User.countDocuments();
     const totalBannedUsers = await User.countDocuments({ isBanned: true });
@@ -148,7 +147,6 @@ export const getAdminInsights = async (req, res) => {
       0
     );
 
-    console.log("[INFO] Admin insights retrieved successfully.");
 
     res.status(200).json({
       totalUsers,

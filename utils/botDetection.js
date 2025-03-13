@@ -7,13 +7,11 @@ let clipModel;
  */
 const loadCLIPModel = async () => {
   try {
-    console.log("[DEBUG] Loading OpenAI CLIP model...");
     clipModel = await pipeline(
       "zero-shot-image-classification",
       "Xenova/clip-vit-base-patch32"
     );
 
-    console.log("[SUCCESS] OpenAI CLIP model loaded.");
   } catch (error) {
     console.error("[ERROR] Failed to load OpenAI CLIP model:", error);
   }
@@ -34,7 +32,6 @@ export const detectBot = async (userId, imageBuffer = null) => {
       return false;
     }
 
-    console.log(`[DEBUG] Running AI-based bot detection for User ${userId}...`);
 
     // Example list of suspicious user behavior
     const botUsers = ["bot123", "testBot"]; // Example flagged bot users
@@ -45,12 +42,10 @@ export const detectBot = async (userId, imageBuffer = null) => {
 
     // If an image is provided, run CLIP image classification
     if (imageBuffer) {
-      console.log("[DEBUG] Running OpenAI CLIP image analysis...");
       const results = await clipModel(imageBuffer, [
         "AI-generated",
         "Human-created",
       ]);
-      console.log("[DEBUG] CLIP Model Results:", results);
 
       // If AI-generated confidence is high, flag as a bot
       if (results[0].label === "AI-generated" && results[0].score > 0.8) {
@@ -59,7 +54,6 @@ export const detectBot = async (userId, imageBuffer = null) => {
       }
     }
 
-    console.log(`[SUCCESS] User ${userId} passed bot detection.`);
     return false;
   } catch (error) {
     console.error("[ERROR] Bot detection failed:", error);

@@ -198,10 +198,8 @@ export const confirmShipment = async (req, res) => {
  */
 export const confirmReceipt = async (req, res) => {
   try {
-    console.log("[DEBUG] confirmReceipt function started");
 
     const { paymentId } = req.params;
-    console.log("[DEBUG] Payment ID:", paymentId);
 
     // ✅ Find the payment
     const payment = await Payment.findById(paymentId).populate(
@@ -209,7 +207,6 @@ export const confirmReceipt = async (req, res) => {
       "email"
     );
 
-    console.log("[DEBUG] Payment details:", payment);
 
     if (!payment) {
       console.error("[ERROR] Payment not found");
@@ -217,7 +214,6 @@ export const confirmReceipt = async (req, res) => {
     }
 
     // ✅ Use `.get()` to fetch payout details directly from the Map
-    console.log("[DEBUG] Fetching payout details using .get() method...");
     const payoutDetails = payment.payoutDetails;
     const accountNumber = payoutDetails.get("account_number");
     const bankCode = payoutDetails.get("bank_code");
@@ -225,18 +221,13 @@ export const confirmReceipt = async (req, res) => {
     const network = payoutDetails.get("network");
     let recipientCode = payoutDetails.get("recipientCode");
 
-    console.log("[DEBUG] Current recipientCode:", recipientCode);
 
     if (!recipientCode) {
-      console.log(
-        "[DEBUG] Recipient code not found. Creating a new recipient..."
-      );
 
       // ✅ Create a recipient dynamically based on payout method
       let recipientPayload;
       switch (payment.payoutMethod) {
         case "bank_transfer":
-          console.log("[DEBUG] Payout method: bank_transfer");
 
           if (!accountNumber || !bankCode) {
             console.error("[ERROR] Missing bank details");
@@ -255,7 +246,6 @@ export const confirmReceipt = async (req, res) => {
           break;
 
         case "momo":
-          console.log("[DEBUG] Payout method: momo");
 
           if (!momoNumber || !network) {
             console.error("[ERROR] Missing momo details");
@@ -281,11 +271,9 @@ export const confirmReceipt = async (req, res) => {
           return res.status(400).json({ message: "Unsupported payout method" });
       }
 
-      console.log("[DEBUG] Recipient payload:", recipientPayload);
 
       // Use axios based function to create the recipient
       const recipientResponse = await createRecipient(recipientPayload);
-      console.log("[DEBUG] Recipient creation response:", recipientResponse);
 
       if (!recipientResponse.status) {
         console.error(
@@ -302,7 +290,6 @@ export const confirmReceipt = async (req, res) => {
       recipientCode = recipientResponse.data.recipient_code;
       payoutDetails.set("recipientCode", recipientCode);
       await payment.save();
-      console.log("[DEBUG] Recipient code saved to payment:", recipientCode);
     }
 
     // ✅ Ensure paystack.transfer.create exists in your SDK (if supported), else use a similar axios call for transfer
@@ -312,18 +299,13 @@ export const confirmReceipt = async (req, res) => {
     }
 
     // ✅ Initiate Paystack Transfer using the available SDK function
-    console.log(
-      "[DEBUG] Initiating transfer with recipientCode:",
-      recipientCode
-    );
+   
     const transferResponse = await paystack.transfer.create({
       source: "balance",
       amount: payment.amount * 100, // Convert to kobo or the smallest currency unit
       recipient: recipientCode,
       reason: "Auction Payment",
     });
-
-    console.log("[DEBUG] Transfer response:", transferResponse);
 
     if (!transferResponse.status) {
       console.error("[ERROR] Transfer failed:", transferResponse.message);
@@ -337,16 +319,13 @@ export const confirmReceipt = async (req, res) => {
     payment.status = "confirmed";
     payment.buyerConfirmed = true;
     await payment.save();
-    console.log("[DEBUG] Payment status updated to 'confirmed'");
 
     // ✅ Notify Seller
-    console.log("[DEBUG] Sending email to seller:", payment.seller.email);
     await sendEmail(
       payment.seller.email,
       "Order received",
       "Your shipped order has been received"
     );
-    console.log("[DEBUG] Email sent to seller");
 
     res.status(200).json({
       message: "Receipt confirmed, funds released to seller",
@@ -362,7 +341,6 @@ export const confirmReceipt = async (req, res) => {
 
 export const processRefunds = async () => {
   try {
-    console.log("[DEBUG] Checking for overdue shipments...");
 
     const threeDaysAgo = new Date();
     threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
@@ -375,14 +353,11 @@ export const processRefunds = async () => {
     });
 
     for (const payment of overduePayments) {
-      console.log(`[INFO] Processing refund for Payment ID: ${payment._id}`);
 
       // Initiate Paystack Refund
       const response = await paystack.refund.create({
         transaction: payment.reference,
       });
-
-      console.log("[DEBUG] Paystack refund response:", response);
 
       if (response.status) {
         payment.status = "refunded";
@@ -395,15 +370,12 @@ export const processRefunds = async () => {
           "The seller did not ship your item within 3 days. Your payment has been refunded."
         );
 
-        console.log(
-          `[SUCCESS] Refund processed for Payment ID: ${payment._id}`
-        );
+     
       } else {
         console.error(`[ERROR] Refund failed for Payment ID: ${payment._id}`);
       }
     }
 
-    console.log("[INFO] Refund process completed.");
   } catch (error) {
     console.error("[ERROR] Refund processing failed:", error.message);
   }

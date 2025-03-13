@@ -10,9 +10,7 @@ import { logAction } from "./auditLogController.js";
  */
 const notifyHighestBidder = async (auction) => {
   if (auction.highestBidder) {
-    console.log(
-      `[INFO] Notifying highest bidder (${auction.highestBidder.email})`
-    );
+
 
     const artworkTitle = auction.artwork.title;
 
@@ -110,7 +108,6 @@ export const createAuction = async (req, res) => {
         if (updatedAuction && updatedAuction.status === "active") {
           updatedAuction.status = "completed";
           await updatedAuction.save();
-          console.log(`[INFO] Auction ${auction._id} ended automatically.`);
 
           // Notify the highest bidder
           await notifyHighestBidder(updatedAuction);
@@ -153,7 +150,6 @@ export const endAuction = async (req, res) => {
     if (auction.status === "active") {
       auction.status = "completed";
       await auction.save();
-      console.log(`[INFO] Auction ${auction._id} ended successfully.`);
 
       // Notify the highest bidder
       await notifyHighestBidder(auction);
@@ -202,7 +198,6 @@ export const getAllAuctions = async (req, res) => {
 
 export const getAuction = async (req, res) => {
   try {
-    console.log('Controller hit')
     const auction = await Auction.findById(req.params.id).populate(
       "artwork seller",
       "title description imageUrl name email"
