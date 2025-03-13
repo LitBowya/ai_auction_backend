@@ -8,17 +8,20 @@ const watermarkPath = path.join("assets", "artbid.png");
  * Apply AI-resistant watermark to an image using Sharp
  * - Uses multiple watermarks with randomized positions & opacity
  * @param {Buffer} imageBuffer - Image buffer
- * @returns {Promise<Buffer>} - Watermarked image buffer
+ * @returns {Buffer} - Watermarked image buffer
  */
 export const applyWatermark = async (imageBuffer) => {
   try {
+
     if (!imageBuffer || imageBuffer.length === 0) {
       throw new Error("Empty image buffer provided to watermark function");
     }
 
+
     if (!(await fileExists(watermarkPath))) {
       throw new Error("Watermark file missing!");
     }
+
 
     const watermark = await sharp(watermarkPath)
       .resize({ width: 100 }) // Resize watermark dynamically
