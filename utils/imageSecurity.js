@@ -10,7 +10,13 @@ const __dirname = path.dirname(__filename);
 const tempDir = path.join(__dirname, "temp");
 
 // Ensure temp directory exists
-await fs.mkdir(tempDir, { recursive: true });
+try {
+  await fs.mkdir(tempDir, { recursive: true });
+  console.log("[SUCCESS] Temporary directory created.");
+} catch (error) {
+  console.error("[ERROR] Failed to create temp directory:", error);
+  throw new Error("Temp directory creation failed. Cannot proceed.");
+}
 
 console.log("[DEBUG] Using local CLIP model for fraud detection.");
 
@@ -23,7 +29,10 @@ const vision_model = await CLIPVisionModelWithProjection.from_pretrained("Xenova
  * @returns {Promise<string>} - Path to saved image file
  */
 const saveTempImage = async (imageBuffer) => {
-  const tempPath = path.join(tempDir, `temp_${Date.now()}.jpg`);
+  if (!(await fs.access(tempDir).then(() => true).catch(() => false))) {
+  throw new Error("Temp directory does not exist. Cannot save temporary image.");
+}
+const tempPath = path.join(tempDir, `temp_${Date.now()}.jpg`);
   await sharp(imageBuffer).jpeg().toFile(tempPath);
   return tempPath;
 };
