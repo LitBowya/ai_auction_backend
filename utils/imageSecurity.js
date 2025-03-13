@@ -58,7 +58,7 @@ export const detectFraudulentImage = async (imageBuffer) => {
     console.log(`[DEBUG] Image classified as ${label} with confidence ${score}`);
 
     // 🔹 Step 5: Flag the image if AI-generated or fraudulent
-    if ((label === "AI-generated" || label === "Fraudulent") && score > 0.5) {
+    if ((label === "AI-generated" || label === "Fraudulent") && score > 0.6) {
       console.warn("[SECURITY ALERT] AI-generated or fraudulent image detected!");
       return { isFraud: true, label, confidence: score };
     }

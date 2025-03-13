@@ -40,11 +40,6 @@ export const placeBid = async (req, res) => {
       return res.status(400).json({ message: "Auction has already ended!" });
     }
 
-    // AI-based bot detection
-    if (await detectBot(userId, bidAmount)) {
-      return res.status(403).json({ message: "Bot bidding detected!" });
-    }
-
     // Validate bid amount
     if (!bidAmount || bidAmount <= 0) {
       return res
