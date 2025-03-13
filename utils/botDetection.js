@@ -49,7 +49,7 @@ const loadCLIPModel = async () => {
     console.log("[DEBUG] Loading OpenAI CLIP model...");
     clipModel = await pipeline(
       "zero-shot-image-classification",
-      "Xenova/clip-vit-small-patch16"
+      "Xenova/clip-vit-base-patch32"
     );
     console.log("[SUCCESS] OpenAI CLIP model loaded.");
   } catch (error) {
