@@ -1,7 +1,6 @@
 import Auction from "../models/Auction.js";
 import Bid from "../models/Bid.js";
 import Notification from "../models/Notification.js";
-import { detectBot } from "../utils/botDetection.js";
 import redis from "../utils/redisClient.js";
 import { sendEmail } from "../utils/email.js";
 
