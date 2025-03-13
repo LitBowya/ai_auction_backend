@@ -1,21 +1,24 @@
-import { pipeline } from "@xenova/transformers";
-import sharp from "sharp";
 import fs from "fs";
 import path from "path";
 import { promisify } from "util";
 import { fileURLToPath } from "url";
+import { pipeline } from "@xenova/transformers";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const unlinkAsync = promisify(fs.unlink);
 
-// ✅ Set cache directory to a writable path
+// ✅ Set cache directory globally before model loads
 const cacheDir = "/tmp/xenova_cache";
 if (!fs.existsSync(cacheDir)) {
   fs.mkdirSync(cacheDir, { recursive: true });
 }
+process.env.XDG_CACHE_HOME = cacheDir;
+process.env.TRANSFORMERS_CACHE = cacheDir;
 process.env.XENOVA_CACHE_DIR = cacheDir;
+
+console.log(`[DEBUG] Using cache directory: ${cacheDir}`);
 
 /**
  * Clear all files from the temporary directory before execution
@@ -46,7 +49,7 @@ const loadCLIPModel = async () => {
     console.log("[DEBUG] Loading OpenAI CLIP model...");
     clipModel = await pipeline(
       "zero-shot-image-classification",
-      "Xenova/clip-vit-base-patch16"
+      "Xenova/clip-vit-small-patch16"
     );
     console.log("[SUCCESS] OpenAI CLIP model loaded.");
   } catch (error) {
@@ -70,7 +73,6 @@ const saveTempImage = async (imageBuffer) => {
   await sharp(imageBuffer).jpeg().toFile(tempPath);
   return tempPath;
 };
-
 /**
  * Convert image buffer to a JPEG and save temporarily
  * @param {Buffer} imageBuffer - Raw image buffer
