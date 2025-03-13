@@ -1,1 +1,32 @@
-{ "version": 2, "rewrites": [{ "source": "/(.*)", "destination": "/api" }] }
+{
+    "installCommand": "npm install --legacy-peer-deps",
+    "version": 2,
+    "builds": [
+      {
+        "src": "server.js",
+        "use": "@vercel/node"
+      }
+    ],
+    "routes": [
+      {
+        "src": "/(.*)",
+        "dest": "server.js"
+      }
+    ],
+    "env": {
+      "FRONTEND_URL": "https://artbid.com",
+      "NODE_ENV": "development",
+      "PORT": "5000",
+      "MONGO_URI": "@mongo_uri",
+      "JWT_SECRET": "@jwt_secret",
+      "PAYSTACK_SECRET_KEY": "@paystack_secret_key",
+      "GMAIL_USER": "@gmail_user",
+      "GMAIL_PASSWORD": "@gmail_password",
+      "UPSTASH_REDIS_REST_URL": "@upstash_redis_rest_url",
+      "UPSTASH_REDIS_REST_TOKEN": "@upstash_redis_rest_token",
+      "CLOUDINARY_CLOUD_NAME": "@cloudinary_cloud_name",
+      "CLOUDINARY_API_KEY": "@cloudinary_api_key",
+      "CLOUDINARY_API_SECRET": "@cloudinary_api_secret"
+    }
+  }
+  
