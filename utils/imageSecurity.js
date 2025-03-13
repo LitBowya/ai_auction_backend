@@ -4,6 +4,17 @@ import path from "path";
 
 let clipModel;
 
+// Ensure cache directory exists
+const cacheDir = "/tmp/xenova_cache";
+if (!fs.existsSync(cacheDir)) {
+  fs.mkdirSync(cacheDir, { recursive: true });
+}
+process.env.XDG_CACHE_HOME = cacheDir;
+process.env.TRANSFORMERS_CACHE = cacheDir;
+process.env.XENOVA_CACHE_DIR = cacheDir;
+
+console.log(`[DEBUG] Using cache directory: ${cacheDir}`);
+
 /**
  * Load OpenAI CLIP for AI-based fraud detection
  */
@@ -37,8 +48,14 @@ export const detectFraudulentImage = async (imageBuffer) => {
 
     console.log("[DEBUG] Running AI fraud detection on image...");
 
+    // Ensure temp directory exists
+    const tempDir = "/tmp";
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+
     // 🔹 Step 1: Save the buffer as a temporary image file (CLIP expects a file path)
-    const tempImagePath = path.join("/tmp", `temp_image_${Date.now()}.jpg`);
+    const tempImagePath = path.join(tempDir, `temp_image_${Date.now()}.jpg`);
     fs.writeFileSync(tempImagePath, imageBuffer);
 
     // 🔹 Step 2: Run CLIP model using the file path
