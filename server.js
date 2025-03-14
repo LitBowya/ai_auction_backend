@@ -41,10 +41,25 @@ if (process.env.NODE_ENV === 'production') {
 app.use(helmet());
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL, // Allow only this origin
+    origin: function(origin, callback) {
+      // Allow requests with no origin (like mobile apps, curl requests)
+      if (!origin) return callback(null, true);
+      
+      const allowedOrigins = [
+        process.env.FRONTEND_URL,
+        `${process.env.FRONTEND_URL}/`
+      ];
+      
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
   })
-); // Handles Cross-Origin Requests
+);
 app.use(cookieParser());
 app.use(compression());
 app.use(bodyParser.json());
