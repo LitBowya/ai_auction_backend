@@ -2,7 +2,6 @@ import Artwork from "../models/Artwork.js";
 import cloudinary from "../config/cloudinary.js";
 import { logAction } from "./auditLogController.js";
 import upload, { processImage } from "../middleware/imageUploadMiddleware.js";
-import { detectFraudulentImage } from "../utils/imageSecurity.js";
 import { applyWatermark } from "../utils/imageWatermark.js";
 
 /**
@@ -18,22 +17,6 @@ export const uploadArtwork = async (req, res) => {
 
     await processImage(req, res, async () => {
       try {
-
-        // 🔹 Step 1: Check if the image is AI-generated or fraudulent
-        const { isFraud, label, confidence } = await detectFraudulentImage(
-          req.optimizedBuffer
-        );
-
-
-        if (isFraud) {
-          console.error(
-            "[SECURITY] Fraudulent or AI-generated image detected!"
-          );
-          return res.status(403).json({
-            message: `Upload rejected. Image classified as ${label} with confidence ${confidence}.`,
-          });
-        }
-
 
         // 🔹 Step 3: Apply custom watermark
         const watermarkedBuffer = await applyWatermark(req.optimizedBuffer);

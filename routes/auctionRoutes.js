@@ -17,7 +17,7 @@ router.get("/", getActiveAuctions);
 router.get("/all", getAllAuctions);
 router.get("/latest", getLatestAuction);
 router.post("/", protect, createAuction);
-router.get("/:id", protect, getAuction)
+router.get("/:id", getAuction)
 router.put("/:id", protect, endAuction);
 router.delete("/:id", protect, deleteAuction);
 

@@ -5,7 +5,6 @@ import {
   getUserBids,
   placeBid,
 } from "../controllers/bidController.js";
-import { validateBid } from "../middleware/bidValidation.js";
 import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
@@ -14,6 +13,6 @@ const router = express.Router();
 router.get("/", protect, getUserBids);
 router.get("/:auctionId", getAuctionBids);
 router.get("/highest/:auctionId", getAuctionHighestBid);
-router.post("/:auctionId", protect, validateBid, placeBid);
+router.post("/:auctionId", protect, placeBid);
 
 export default router;

@@ -3,7 +3,6 @@ import xss from "xss-clean";
 import cors from "cors";
 import helmet from "helmet";
 import compression from "compression";
-import rateLimit from "express-rate-limit";
 import dotenv from "dotenv";
 import bodyParser from "body-parser";
 import cookieParser from "cookie-parser";
@@ -23,7 +22,6 @@ import adminRoutes from "./routes/adminRoutes.js";
 
 // Import middleware
 import { errorHandler, notFound } from "./middleware/errorMiddleware.js";
-import { apiLimiter } from "./middleware/rateLimiter.js";
 
 dotenv.config();
 connectDB();
@@ -37,7 +35,7 @@ app.set("trust proxy", true);
 app.use(helmet());
 app.use(
   cors({
-    origin: `*`, // Allow only this origin
+    origin: process.env.FRONTEND_URL, // Allow only this origin
     credentials: true,
   })
 ); // Handles Cross-Origin Requests
@@ -48,19 +46,19 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json({ limit: "5mb" }));
 app.use(xss());
 
-// Rate Limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per window
-  standardHeaders: true, // Return rate limit info in headers
-  legacyHeaders: false, // Disable `X-RateLimit-*` headers
-  keyGenerator: (req) => req.ip, // Use correct IP
-});
-app.use(limiter);
+// // Rate Limiting
+// const limiter = rateLimit({
+//   windowMs: 15 * 60 * 1000, // 15 minutes
+//   max: 100, // Limit each IP to 100 requests per window
+//   standardHeaders: true, // Return rate limit info in headers
+//   legacyHeaders: false, // Disable `X-RateLimit-*` headers
+//   keyGenerator: (req) => req.ip, // Use correct IP
+// });
+// app.use(limiter);
 
-app.get("/", (req, res) => {
-  res.status(200).json({ success: true, message: "API is running!" });
-});
+// app.get("/", (req, res) => {
+//   res.status(200).json({ success: true, message: "API is running!" });
+// });
 
 // Routes
 app.use("/api/auth", authRoutes);
@@ -73,7 +71,7 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/shipping", shippingRoutes);
 app.use("/api/category", categoryRoutes);
 app.use("/api/admin", adminRoutes);
-app.use("/api/", apiLimiter);
+// app.use("/api/", apiLimiter);
 
 // Error handling middleware
 app.use(notFound);

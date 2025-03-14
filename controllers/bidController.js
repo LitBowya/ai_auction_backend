@@ -10,7 +10,7 @@ import { sendEmail } from "../utils/email.js";
 export const placeBid = async (req, res) => {
   try {
     const { auctionId } = req.params;
-    const { bidAmount } = req.body;
+    const { amount } = req.body;
     const userId = req.user._id;
 
 
@@ -40,21 +40,21 @@ export const placeBid = async (req, res) => {
     }
 
     // Validate bid amount
-    if (!bidAmount || bidAmount <= 0) {
+    if (!amount || amount <= 0) {
       return res
         .status(400)
         .json({ message: "Bid amount must be greater than zero!" });
     }
 
     // Ensure bid is above starting price if no bids exist
-    if (auction.highestBid === 0 && bidAmount < auction.startingPrice) {
+    if (auction.highestBid === 0 && amount < auction.startingPrice) {
       return res.status(400).json({
         message: `Bid must be at least $${auction.startingPrice}!`,
       });
     }
 
     // Ensure bid is higher than the current highest bid
-    if (bidAmount <= auction.highestBid) {
+    if (amount <= auction.highestBid) {
       return res
         .status(400)
         .json({ message: `Bid must be higher than $${auction.highestBid}!` });
@@ -85,18 +85,18 @@ export const placeBid = async (req, res) => {
     const bid = await Bid.create({
       auction: auctionId,
       bidder: userId,
-      amount: bidAmount,
+      amount: amount,
     });
 
     // Update auction with new highest bid
-    auction.highestBid = bidAmount;
+    auction.highestBid = amount;
     auction.highestBidder = userId;
     auction.bids.push(bid._id);
     await auction.save();
 
     // Store in Redis
     await redis.hset(`auction:${auctionId}`, {
-      highestBid: bidAmount,
+      highestBid: amount,
       highestBidder: userId.toString(),
     });
 
