@@ -6,6 +6,7 @@ import compression from "compression";
 import dotenv from "dotenv";
 import bodyParser from "body-parser";
 import cookieParser from "cookie-parser";
+import rateLimit from "express-rate-limit";
 import connectDB from "./config/db.js";
 
 // Import routes
@@ -30,8 +31,13 @@ const app = express();
 
 
 // Middleware
-// ✅ Trust Vercel's Proxy
-app.set("trust proxy", true);
+// Set trust proxy based on your deployment scenario
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1); // Trust first proxy if behind a reverse proxy
+} else {
+  app.set('trust proxy', false); // Disable trust proxy in development
+}
+
 app.use(helmet());
 app.use(
   cors({
@@ -46,15 +52,14 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json({ limit: "5mb" }));
 app.use(xss());
 
-// // Rate Limiting
-// const limiter = rateLimit({
-//   windowMs: 15 * 60 * 1000, // 15 minutes
-//   max: 100, // Limit each IP to 100 requests per window
-//   standardHeaders: true, // Return rate limit info in headers
-//   legacyHeaders: false, // Disable `X-RateLimit-*` headers
-//   keyGenerator: (req) => req.ip, // Use correct IP
-// });
-// app.use(limiter);
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per window
+  standardHeaders: true, // Return rate limit info in headers
+  legacyHeaders: false, // Disable `X-RateLimit-*` headers
+  keyGenerator: (req) => req.ip, // Use correct IP
+});
+app.use(limiter);
 
 app.get("/", (req, res) => {
   res.status(200).json({ success: true, message: "API is running!" });
