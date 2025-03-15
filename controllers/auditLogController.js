@@ -12,7 +12,7 @@ export const logAction = async (user, action, details, ip) => {
       ipAddress: ip || "Unknown IP",
     });
   } catch (error) {
-    console.error("Audit Log Error:", error.message);
+    console.error("[Audit Log Error]:", error.message);
   }
 };
 
@@ -22,10 +22,22 @@ export const logAction = async (user, action, details, ip) => {
 export const getAuditLogs = async (req, res) => {
   try {
     const logs = await AuditLog.find().populate("user", "name email");
-    res.json(logs);
+
+    if (!logs.length) {
+      return res.status(404).json({ message: "No audit logs found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Audit logs retrieved successfully",
+      data: logs,
+    });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error fetching logs", error: error.message });
+    console.error("[ERROR] Failed to fetch audit logs:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching audit logs",
+      error: error.message,
+    });
   }
 };

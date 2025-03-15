@@ -62,6 +62,13 @@ export const unbanUser = async (req, res) => {
       reason: "Admin lifted the ban",
     });
 
+     // Notify user
+     await sendEmail(
+      user.email,
+      "Account Unbanned",
+      `Your account has been unbanned. Reason: ${reason}`
+    );
+
     res.status(200).json({ message: "User unbanned successfully" });
   } catch (error) {
     res
@@ -75,11 +82,14 @@ export const unbanUser = async (req, res) => {
  */
 export const suspendAuction = async (req, res) => {
   try {
-    const { auctionId } = req.params;
+    const { auctionId, userId } = req.params;
     const { reason } = req.body;
 
     const auction = await Auction.findById(auctionId);
     if (!auction) return res.status(404).json({ message: "Auction not found" });
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
 
     auction.isSuspended = true;
     await auction.save();
@@ -91,6 +101,13 @@ export const suspendAuction = async (req, res) => {
       targetAuction: auctionId,
       reason,
     });
+
+     // Notify user
+     await sendEmail(
+      user.email,
+      "Auction Suspened",
+      `Your auction has been suspended. Reason: ${reason}`
+    );
 
     res.status(200).json({ message: "Auction suspended successfully" });
   } catch (error) {
@@ -105,10 +122,14 @@ export const suspendAuction = async (req, res) => {
  */
 export const unsuspendAuction = async (req, res) => {
   try {
-    const { auctionId } = req.params;
+    const { auctionId, userId } = req.params;
+    const { reason } = req.body;
 
     const auction = await Auction.findById(auctionId);
     if (!auction) return res.status(404).json({ message: "Auction not found" });
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
 
     auction.isSuspended = false;
     await auction.save();
@@ -120,6 +141,13 @@ export const unsuspendAuction = async (req, res) => {
       targetAuction: auctionId,
       reason: "Admin lifted the suspension",
     });
+
+     // Notify user
+     await sendEmail(
+      user.email,
+      "Auction Suspended",
+      `Your auction has been suspended. Reason: ${reason}`
+    );
 
     res.status(200).json({ message: "Auction unsuspended successfully" });
   } catch (error) {

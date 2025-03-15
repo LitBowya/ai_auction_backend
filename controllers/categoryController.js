@@ -8,13 +8,19 @@ export const createCategory = async (req, res) => {
   try {
     const { name } = req.body;
 
-    if (!name)
-      return res.status(400).json({ message: "Category name required" });
+    if (!name?.trim()) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Category name is required" });
+    }
 
     // Check if category exists
     const existingCategory = await Category.findOne({ name: name.trim() });
-    if (existingCategory)
-      return res.status(400).json({ message: "Category already exists" });
+    if (existingCategory) {
+      return res
+        .status(409)
+        .json({ success: false, message: "Category already exists" });
+    }
 
     const category = await Category.create({ name: name.trim() });
 
@@ -27,12 +33,20 @@ export const createCategory = async (req, res) => {
 
     res
       .status(201)
-      .json({ message: "Category created successfully", category });
+      .json({
+        success: true,
+        message: "Category created successfully",
+        category,
+      });
   } catch (error) {
     console.error("[ERROR] Creating category:", error);
     res
       .status(500)
-      .json({ message: "Error creating category", error: error.message });
+      .json({
+        success: false,
+        message: "Error creating category",
+        error: error.message,
+      });
   }
 };
 
@@ -42,12 +56,16 @@ export const createCategory = async (req, res) => {
 export const getCategories = async (req, res) => {
   try {
     const categories = await Category.find().sort({ name: 1 });
-    res.status(200).json(categories);
+    res.status(200).json({ success: true, categories });
   } catch (error) {
     console.error("[ERROR] Fetching categories:", error);
     res
       .status(500)
-      .json({ message: "Error fetching categories", error: error.message });
+      .json({
+        success: false,
+        message: "Error fetching categories",
+        error: error.message,
+      });
   }
 };
 
@@ -59,8 +77,11 @@ export const updateCategory = async (req, res) => {
     const { categoryId } = req.params;
     const { name } = req.body;
 
-    if (!name)
-      return res.status(400).json({ message: "Category name required" });
+    if (!name?.trim()) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Category name is required" });
+    }
 
     const category = await Category.findByIdAndUpdate(
       categoryId,
@@ -68,8 +89,11 @@ export const updateCategory = async (req, res) => {
       { new: true }
     );
 
-    if (!category)
-      return res.status(404).json({ message: "Category not found" });
+    if (!category) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Category not found" });
+    }
 
     await logAction(
       req.user,
@@ -80,12 +104,20 @@ export const updateCategory = async (req, res) => {
 
     res
       .status(200)
-      .json({ message: "Category updated successfully", category });
+      .json({
+        success: true,
+        message: "Category updated successfully",
+        category,
+      });
   } catch (error) {
     console.error("[ERROR] Updating category:", error);
     res
       .status(500)
-      .json({ message: "Error updating category", error: error.message });
+      .json({
+        success: false,
+        message: "Error updating category",
+        error: error.message,
+      });
   }
 };
 
@@ -98,8 +130,11 @@ export const deleteCategory = async (req, res) => {
 
     const category = await Category.findByIdAndDelete(categoryId);
 
-    if (!category)
-      return res.status(404).json({ message: "Category not found" });
+    if (!category) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Category not found" });
+    }
 
     await logAction(
       req.user,
@@ -108,11 +143,17 @@ export const deleteCategory = async (req, res) => {
       req.ip
     );
 
-    res.status(200).json({ message: "Category deleted successfully" });
+    res
+      .status(200)
+      .json({ success: true, message: "Category deleted successfully" });
   } catch (error) {
     console.error("[ERROR] Deleting category:", error);
     res
       .status(500)
-      .json({ message: "Error deleting category", error: error.message });
+      .json({
+        success: false,
+        message: "Error deleting category",
+        error: error.message,
+      });
   }
 };

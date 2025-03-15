@@ -13,59 +13,39 @@ export const placeBid = async (req, res) => {
     const { amount } = req.body;
     const userId = req.user._id;
 
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ success: false, message: "Bid amount must be greater than zero!" });
+    }
 
-    // Retrieve auction
     const auction = await Auction.findById(auctionId)
       .populate("artwork", "title")
       .populate("highestBidder", "name email");
     if (!auction || auction.status !== "active") {
-      return res.status(404).json({ message: "Auction not available" });
+      return res.status(404).json({ success: false, message: "Auction not available" });
     }
 
-    // Prevent owner from bidding on their own auction
     if (auction.seller.toString() === userId.toString()) {
-      return res
-        .status(403)
-        .json({ message: "You cannot bid on your own auction!" });
+      return res.status(403).json({ success: false, message: "You cannot bid on your own auction!" });
     }
 
-    // Check if auction has started
     if (new Date() < new Date(auction.startingTime)) {
-      return res.status(400).json({ message: "Auction has not started yet!" });
+      return res.status(400).json({ success: false, message: "Auction has not started yet!" });
     }
 
-    // Check if auction has ended
     if (new Date() >= new Date(auction.biddingEndTime)) {
-      return res.status(400).json({ message: "Auction has already ended!" });
+      return res.status(400).json({ success: false, message: "Auction has already ended!" });
     }
 
-    // Validate bid amount
-    if (!amount || amount <= 0) {
-      return res
-        .status(400)
-        .json({ message: "Bid amount must be greater than zero!" });
-    }
-
-    // Ensure bid is above starting price if no bids exist
     if (auction.highestBid === 0 && amount < auction.startingPrice) {
-      return res.status(400).json({
-        message: `Bid must be at least $${auction.startingPrice}!`,
-      });
+      return res.status(400).json({ success: false, message: `Bid must be at least $${auction.startingPrice}!` });
     }
 
-    // Ensure bid is higher than the current highest bid
     if (amount <= auction.highestBid) {
-      return res
-        .status(400)
-        .json({ message: `Bid must be higher than $${auction.highestBid}!` });
+      return res.status(400).json({ success: false, message: `Bid must be higher than $${auction.highestBid}!` });
     }
 
-    // Notify previous highest bidder
-    if (
-      auction.highestBidder &&
-      auction.highestBidder._id.toString() !== userId.toString()
-    ) {
-      const previousBidderName = auction.highestBidder.name; // Get the name
+    if (auction.highestBidder && auction.highestBidder._id.toString() !== userId.toString()) {
+      const previousBidderName = auction.highestBidder.name;
       const artworkName = auction.artwork.title;
 
       await Notification.create({
@@ -81,118 +61,70 @@ export const placeBid = async (req, res) => {
       );
     }
 
-    // Save bid
-    const bid = await Bid.create({
-      auction: auctionId,
-      bidder: userId,
-      amount: amount,
-    });
-
-    // Update auction with new highest bid
+    const bid = await Bid.create({ auction: auctionId, bidder: userId, amount });
     auction.highestBid = amount;
     auction.highestBidder = userId;
     auction.bids.push(bid._id);
     await auction.save();
 
-    // Store in Redis
-    await redis.hset(`auction:${auctionId}`, {
-      highestBid: amount,
-      highestBidder: userId.toString(),
-    });
+    await redis.hset(`auction:${auctionId}`, { highestBid: amount, highestBidder: userId.toString() });
 
-
-    res.status(201).json({
-      message: "Bid placed successfully",
-      bid,
-    });
+    res.status(201).json({ success: true, message: "Bid placed successfully", bid });
   } catch (error) {
     console.error("[ERROR] Bidding failed:", error.message);
-    res.status(500).json({ message: "Bidding failed", error: error.message });
+    res.status(500).json({ success: false, message: "Bidding failed", error: error.message });
   }
 };
 
 export const getAuctionBids = async (req, res) => {
   try {
     const { auctionId } = req.params;
+    const bids = await Bid.find({ auction: auctionId }).sort({ amount: -1 }).populate("bidder", "name email");
 
-    // Find all bids for the auction, sorted by highest amount
-    const bids = await Bid.find({ auction: auctionId })
-      .sort({ amount: -1 })
-      .populate("bidder", "name email");
-
-    res.status(200).json({
-      message: "Auction bid history retrieved successfully",
-      bids,
-    });
+    res.status(200).json({ success: true, message: "Auction bid history retrieved successfully", bids });
   } catch (error) {
     console.error("[ERROR] Fetching bid history failed:", error.message);
-    res
-      .status(500)
-      .json({ message: "Error fetching bid history", error: error.message });
+    res.status(500).json({ success: false, message: "Error fetching bid history", error: error.message });
   }
 };
 
 export const getUserBids = async (req, res) => {
   try {
     const userId = req.user._id;
+    const bids = await Bid.find({ bidder: userId }).populate("auction", "title highestBid biddingEndTime").sort({ createdAt: -1 });
 
-    const bids = await Bid.find({ bidder: userId })
-      .populate("auction", "title highestBid biddingEndTime")
-      .sort({ createdAt: -1 });
-
-    res.status(200).json({
-      message: "User bid history retrieved successfully",
-      bids,
-    });
+    res.status(200).json({ success: true, message: "User bid history retrieved successfully", bids });
   } catch (error) {
     console.error("[ERROR] Fetching user bid history failed:", error.message);
-    res
-      .status(500)
-      .json({ message: "Error fetching user bids", error: error.message });
+    res.status(500).json({ success: false, message: "Error fetching user bids", error: error.message });
   }
 };
 
 export const getAuctionHighestBid = async (req, res) => {
   try {
     const { auctionId } = req.params;
-
-    // Find auction
-    const auction = await Auction.findById(auctionId).populate(
-      "highestBidder",
-      "name"
-    );
+    const auction = await Auction.findById(auctionId).populate("highestBidder", "name");
 
     if (!auction) {
-      return res.status(404).json({ message: "Auction not found" });
+      return res.status(404).json({ success: false, message: "Auction not found" });
     }
 
-    res.status(200).json({
-      message: "Highest bid retrieved successfully",
-      highestBid: auction.highestBid,
-      highestBidder: auction.highestBidder,
-    });
+    res.status(200).json({ success: true, message: "Highest bid retrieved successfully", highestBid: auction.highestBid, highestBidder: auction.highestBidder });
   } catch (error) {
     console.error("[ERROR] Fetching highest bid failed:", error.message);
-    res
-      .status(500)
-      .json({ message: "Error retrieving highest bid", error: error.message });
+    res.status(500).json({ success: false, message: "Error retrieving highest bid", error: error.message });
   }
 };
 
 export const autoEndAuction = async () => {
   try {
-
     const now = new Date();
-    const expiredAuctions = await Auction.find({
-      biddingEndTime: { $lte: now },
-      status: "active",
-    });
+    const expiredAuctions = await Auction.find({ biddingEndTime: { $lte: now }, status: "active" });
 
     for (const auction of expiredAuctions) {
       auction.status = "completed";
       await auction.save();
     }
-
   } catch (error) {
     console.error("[ERROR] Auto-ending auctions failed:", error.message);
   }

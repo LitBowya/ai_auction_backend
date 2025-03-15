@@ -5,6 +5,7 @@ import { sendEmail } from "../utils/email.js";
 import paystack from "../utils/paystack.js";
 import { createRecipient } from "../utils/createRecipient.js";
 import Shipping from "../models/Shipping.js";
+
 /**
  * 🔹 Initiate Payment (Highest Bidder Only)
  */
@@ -19,25 +20,36 @@ export const initiatePayment = async (req, res) => {
 
     const shipping = await Shipping.findOne({ auction: auctionId });
     if (!shipping) {
-      throw new Error("No shipping details found for this auction.");
+      return res.status(404).json({
+        success: false,
+        message: "No shipping details found for this auction.",
+      });
     }
 
     if (!auction.payoutMethod && auction.paymentDetails) {
-      return res
-        .status(400)
-        .json({ message: "Payment details of auction was not set" });
+      return res.status(400).json({
+        success: false,
+        message: "Payment details of auction were not set",
+      });
     }
 
-    if (!auction) return res.status(404).json({ message: "Auction not found" });
+    if (!auction)
+      return res
+        .status(404)
+        .json({ success: false, message: "Auction not found" });
 
     // Ensure auction is completed
     if (auction.status !== "completed") {
-      return res.status(400).json({ message: "Auction payment not available" });
+      return res.status(400).json({
+        success: false,
+        message: "Auction payment not available",
+      });
     }
 
     // Ensure user is the highest bidder
     if (auction.highestBidder._id.toString() !== userId.toString()) {
       return res.status(403).json({
+        success: false,
         message: "Unauthorized payment request, You are not the highest bidder",
       });
     }
@@ -66,7 +78,10 @@ export const initiatePayment = async (req, res) => {
     );
 
     if (!response.status) {
-      return res.status(500).json({ message: "Failed to initiate payment" });
+      return res.status(500).json({
+        success: false,
+        message: "Failed to initiate payment",
+      });
     }
 
     // Save payment reference in database (pending status)
@@ -83,12 +98,17 @@ export const initiatePayment = async (req, res) => {
     });
 
     res.status(200).json({
+      success: true,
       message: "Payment link generated successfully",
       paymentUrl: response.data.authorization_url,
     });
   } catch (error) {
     console.error("[ERROR] Payment initiation failed:", error.message);
-    res.status(500).json({ message: "Error initiating payment" });
+    res.status(500).json({
+      success: false,
+      message: "Error initiating payment",
+      error: error.message,
+    });
   }
 };
 
@@ -102,11 +122,15 @@ export const verifyPayment = async (req, res) => {
 
     // Find the auction
     const auction = await Auction.findById(auctionId).populate("seller");
-    if (!auction) return res.status(404).json({ message: "Auction not found" });
+    if (!auction)
+      return res
+        .status(404)
+        .json({ success: false, message: "Auction not found" });
 
     // Ensure user is the owner of the auction
     if (auction.seller._id.toString() !== userId.toString()) {
       return res.status(403).json({
+        success: false,
         message: "Unauthorized payment verification, You are not the owner",
       });
     }
@@ -115,7 +139,10 @@ export const verifyPayment = async (req, res) => {
     const payment = await Payment.findOne({ auction: auctionId }).populate(
       "seller"
     );
-    if (!payment) return res.status(404).json({ message: "Payment not found" });
+    if (!payment)
+      return res
+        .status(404)
+        .json({ success: false, message: "Payment not found" });
 
     const reference = payment.reference;
 
@@ -129,19 +156,27 @@ export const verifyPayment = async (req, res) => {
         "[ERROR] Paystack verification failed:",
         paystackError.message
       );
-      return res
-        .status(500)
-        .json({ message: "Error verifying payment with Paystack" });
+      return res.status(500).json({
+        success: false,
+        message: "Error verifying payment with Paystack",
+        error: paystackError.message,
+      });
     }
 
     // Check the response structure
     if (!response || !response.data || response.data.status !== "success") {
-      return res.status(400).json({ message: "Payment verification failed" });
+      return res.status(400).json({
+        success: false,
+        message: "Payment verification failed",
+      });
     }
 
     // Ensure payment isn't already verified
     if (payment.status !== "pending") {
-      return res.status(200).json({ message: "Payment is already verified" });
+      return res.status(200).json({
+        success: true,
+        message: "Payment is already verified",
+      });
     }
 
     // Update payment status to "paid"
@@ -155,10 +190,17 @@ export const verifyPayment = async (req, res) => {
       `The buyer has paid. Please ship the artwork.`
     );
 
-    res.status(200).json({ message: "Payment verified successfully" });
+    res.status(200).json({
+      success: true,
+      message: "Payment verified successfully",
+    });
   } catch (error) {
     console.error("[ERROR] Payment verification failed:", error.message);
-    res.status(500).json({ message: "Error verifying payment" });
+    res.status(500).json({
+      success: false,
+      message: "Error verifying payment",
+      error: error.message,
+    });
   }
 };
 
@@ -173,7 +215,10 @@ export const confirmShipment = async (req, res) => {
       "email"
     );
 
-    if (!payment) return res.status(404).json({ message: "Payment not found" });
+    if (!payment)
+      return res
+        .status(404)
+        .json({ success: false, message: "Payment not found" });
 
     payment.status = "shipped";
     payment.shipmentConfirmed = true;
@@ -185,11 +230,16 @@ export const confirmShipment = async (req, res) => {
       `Your bought product have been shipped.`
     );
 
-    res.status(200).json({ message: "Shipment confirmed" });
+    res.status(200).json({
+      success: true,
+      message: "Shipment confirmed",
+    });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Shipment confirmation failed", error: error.message });
+    res.status(500).json({
+      success: false,
+      message: "Shipment confirmation failed",
+      error: error.message,
+    });
   }
 };
 
@@ -198,7 +248,6 @@ export const confirmShipment = async (req, res) => {
  */
 export const confirmReceipt = async (req, res) => {
   try {
-
     const { paymentId } = req.params;
 
     // ✅ Find the payment
@@ -207,10 +256,11 @@ export const confirmReceipt = async (req, res) => {
       "email"
     );
 
-
     if (!payment) {
       console.error("[ERROR] Payment not found");
-      return res.status(404).json({ message: "Payment not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Payment not found" });
     }
 
     // ✅ Use `.get()` to fetch payout details directly from the Map
@@ -221,19 +271,17 @@ export const confirmReceipt = async (req, res) => {
     const network = payoutDetails.get("network");
     let recipientCode = payoutDetails.get("recipientCode");
 
-
     if (!recipientCode) {
-
       // ✅ Create a recipient dynamically based on payout method
       let recipientPayload;
       switch (payment.payoutMethod) {
         case "bank_transfer":
-
           if (!accountNumber || !bankCode) {
             console.error("[ERROR] Missing bank details");
-            return res
-              .status(400)
-              .json({ message: "Bank account details are required" });
+            return res.status(400).json({
+              success: false,
+              message: "Bank account details are required",
+            });
           }
 
           recipientPayload = {
@@ -246,12 +294,12 @@ export const confirmReceipt = async (req, res) => {
           break;
 
         case "momo":
-
           if (!momoNumber || !network) {
             console.error("[ERROR] Missing momo details");
-            return res
-              .status(400)
-              .json({ message: "Mobile Money details are required" });
+            return res.status(400).json({
+              success: false,
+              message: "Mobile Money details are required",
+            });
           }
 
           recipientPayload = {
@@ -268,9 +316,11 @@ export const confirmReceipt = async (req, res) => {
             "[ERROR] Unsupported payout method:",
             payment.payoutMethod
           );
-          return res.status(400).json({ message: "Unsupported payout method" });
+          return res.status(400).json({
+            success: false,
+            message: "Unsupported payout method",
+          });
       }
-
 
       // Use axios based function to create the recipient
       const recipientResponse = await createRecipient(recipientPayload);
@@ -281,6 +331,7 @@ export const confirmReceipt = async (req, res) => {
           recipientResponse.message
         );
         return res.status(400).json({
+          success: false,
           message: "Recipient creation failed",
           error: recipientResponse.message,
         });
@@ -299,7 +350,6 @@ export const confirmReceipt = async (req, res) => {
     }
 
     // ✅ Initiate Paystack Transfer using the available SDK function
-   
     const transferResponse = await paystack.transfer.create({
       source: "balance",
       amount: payment.amount * 100, // Convert to kobo or the smallest currency unit
@@ -310,6 +360,7 @@ export const confirmReceipt = async (req, res) => {
     if (!transferResponse.status) {
       console.error("[ERROR] Transfer failed:", transferResponse.message);
       return res.status(400).json({
+        success: false,
         message: "Transfer to seller failed",
         error: transferResponse.message,
       });
@@ -328,11 +379,13 @@ export const confirmReceipt = async (req, res) => {
     );
 
     res.status(200).json({
+      success: true,
       message: "Receipt confirmed, funds released to seller",
     });
   } catch (error) {
     console.error("[ERROR] Error confirming receipt:", error.message);
     res.status(500).json({
+      success: false,
       message: "Error confirming receipt",
       error: error.message,
     });
@@ -341,7 +394,6 @@ export const confirmReceipt = async (req, res) => {
 
 export const processRefunds = async () => {
   try {
-
     const threeDaysAgo = new Date();
     threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
 
@@ -353,7 +405,6 @@ export const processRefunds = async () => {
     });
 
     for (const payment of overduePayments) {
-
       // Initiate Paystack Refund
       const response = await paystack.refund.create({
         transaction: payment.reference,
@@ -369,13 +420,10 @@ export const processRefunds = async () => {
           "Refund Processed",
           "The seller did not ship your item within 3 days. Your payment has been refunded."
         );
-
-     
       } else {
         console.error(`[ERROR] Refund failed for Payment ID: ${payment._id}`);
       }
     }
-
   } catch (error) {
     console.error("[ERROR] Refund processing failed:", error.message);
   }

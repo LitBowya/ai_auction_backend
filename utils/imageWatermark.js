@@ -1,59 +1,40 @@
 import sharp from "sharp";
 import path from "path";
-import fs from "fs/promises";
 
-const watermarkPath = path.join("assets", "artbid.png");
 
-/**
- * Apply AI-resistant watermark to an image using Sharp
- * - Uses multiple watermarks with randomized positions & opacity
- * @param {Buffer} imageBuffer - Image buffer
- * @returns {Buffer} - Watermarked image buffer
- */
-export const applyWatermark = async (imageBuffer) => {
+export const applyWatermark = async (filePath) => {
   try {
+    // Define the path to the watermark image
+    const watermarkPath = path.join(__dirname, "../assets/artbid.png");
 
-    if (!imageBuffer || imageBuffer.length === 0) {
-      throw new Error("Empty image buffer provided to watermark function");
-    }
+    // Load the main image and the watermark
+    const image = sharp(filePath);
+    const watermark = sharp(watermarkPath);
 
+    // Resize the watermark to 100x100 pixels
+    const resizedWatermark = await watermark.resize(100, 100).toBuffer();
 
-    if (!(await fileExists(watermarkPath))) {
-      throw new Error("Watermark file missing!");
-    }
+    // Get the dimensions of the main image
+    const metadata = await image.metadata();
+    const { width, height } = metadata;
 
-
-    const watermark = await sharp(watermarkPath)
-      .resize({ width: 100 }) // Resize watermark dynamically
-      .png()
-      .toBuffer();
-
-    const watermarkedBuffer = await sharp(imageBuffer)
-      .toFormat("jpeg")
+    // Composite the watermark onto the main image
+    const watermarkedImage = await image
       .composite([
         {
-          input: watermark,
-          gravity: "southeast",
-          blend: "overlay",
+          input: resizedWatermark,
+          top: height - 110, // Position watermark 10px from the bottom
+          left: width - 110, // Position watermark 10px from the right
         },
       ])
       .toBuffer();
 
-    return watermarkedBuffer;
-  } catch (error) {
-    console.error("[ERROR] Watermarking failed:", error);
-    throw new Error("Watermarking failed");
-  }
-};
+    // Save the watermarked image back to the file path
+    await sharp(watermarkedImage).toFile(filePath);
 
-/**
- * Check if a file exists
- */
-const fileExists = async (filePath) => {
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
+    return { success: true, filePath };
+  } catch (error) {
+    console.error("Watermark Error:", error);
+    return { success: false, message: "Failed to apply watermark." };
   }
 };

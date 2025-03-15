@@ -1,7 +1,7 @@
 import Notification from "../models/Notification.js";
 
 /**
- * Fetch all notifications for the logged-in user.
+ * ✅ Fetch all notifications for the logged-in user.
  */
 export const getNotifications = async (req, res) => {
   try {
@@ -9,26 +9,26 @@ export const getNotifications = async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(20);
 
-    res.json(notifications);
+    res.status(200).json({ success: true, notifications });
   } catch (error) {
-    console.error("[ERROR] Fetching notifications failed:", error.message);
-    res.status(500).json({ message: "Error fetching notifications" });
+    console.error("[ERROR] Fetching notifications failed:", error);
+    res.status(500).json({ success: false, message: "Error fetching notifications", error: error.message });
   }
 };
 
 /**
- * Mark notifications as read.
+ * ✅ Mark notifications as read.
  */
 export const markNotificationsAsRead = async (req, res) => {
   try {
-    await Notification.updateMany(
+    const result = await Notification.updateMany(
       { user: req.user._id, read: false },
       { $set: { read: true } }
     );
 
-    res.json({ message: "Notifications marked as read" });
+    res.status(200).json({ success: true, message: "Notifications marked as read", updatedCount: result.modifiedCount });
   } catch (error) {
-    console.error("[ERROR] Marking notifications failed:", error.message);
-    res.status(500).json({ message: "Error marking notifications" });
+    console.error("[ERROR] Marking notifications failed:", error);
+    res.status(500).json({ success: false, message: "Error marking notifications", error: error.message });
   }
 };

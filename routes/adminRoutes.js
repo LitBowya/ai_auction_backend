@@ -19,8 +19,8 @@ router.put("/user/:userId/ban", protect, isAdmin, banUser);
 router.put("/user/:userId/unban", protect, isAdmin, unbanUser);
 
 
-router.put("/auction/:auctionId/suspend", protect, isAdmin, suspendAuction);
+router.put("/auction/:auctionId/suspend/:userId", protect, isAdmin, suspendAuction);
 
-router.put("/auction/:auctionId/unsuspend", protect, isAdmin, unsuspendAuction);
+router.put("/auction/:auctionId/unsuspend/:userId", protect, isAdmin, unsuspendAuction);
 
 export default router;

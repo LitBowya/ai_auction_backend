@@ -1,96 +1,193 @@
 import Artwork from "../models/Artwork.js";
 import cloudinary from "../config/cloudinary.js";
 import { logAction } from "./auditLogController.js";
-import upload, { processImage } from "../middleware/imageUploadMiddleware.js";
 import { applyWatermark } from "../utils/imageWatermark.js";
+import { reverseImageSearch } from "../utils/clarifaiCheck.js";
+import { checkAIImage } from "../utils/sightengineCheck.js";
+import fs from "fs";
+import path from "path";
+import { promisify } from "util";
+
+const writeFileAsync = promisify(fs.writeFile);
+const unlinkFileAsync = promisify(fs.unlink);
 
 /**
  * Upload an artwork
  */
 export const uploadArtwork = async (req, res) => {
+  try {
+    const { title, description, category } = req.body;
 
-  upload.single("image")(req, res, async (err) => {
-    if (err) {
-      console.error("[ERROR] File upload error:", err.message);
-      return res.status(400).json({ message: err.message });
+    // 🔹 Validate required fields
+    if (!title || !description || !category) {
+      return res.status(400).json({
+        status: "error",
+        message: "Title, description, and category are required",
+      });
     }
 
-    await processImage(req, res, async () => {
-      try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ error: "No images uploaded" });
+    }
 
-        // 🔹 Step 3: Apply custom watermark
-        const watermarkedBuffer = await applyWatermark(req.optimizedBuffer);
+    let uploadedImages = [];
 
-        // 🔹 Step 4: Upload to Cloudinary
-        const uploadStream = cloudinary.uploader.upload_stream(
-          { folder: "artworks", format: "jpeg" },
-          (error, result) => {
-            if (error) {
-              console.error("[ERROR] Cloudinary upload failed:", error);
-              return res
-                .status(500)
-                .json({ message: "Image upload error", error });
-            }
+    for (let file of req.files) {
+      let filePath = file.path;
 
-            // 🔹 Step 5: Save to MongoDB **after Cloudinary upload**
-            Artwork.create({
-              title: req.body.title,
-              description: req.body.description,
-              category: req.body.category,
-              imageUrl: result.secure_url,
-              owner: req.user._id,
-            })
-              .then((artwork) => {
-                res.status(201).json({
-                  message: "Artwork uploaded successfully",
-                  artwork,
-                });
-              })
-              .catch((dbError) => {
-                console.error("[ERROR] Database error:", dbError.message);
-                res
-                  .status(500)
-                  .json({ message: "Database error", error: dbError.message });
-              });
-          }
-        );
+      // 🔹 If file.path is missing, create a temp file
+      if (!filePath) {
+        console.log("📝 Writing file from buffer...");
+        const tempFilePath = path.join("/tmp", `${Date.now()}-${file.originalname}`);
+        await writeFileAsync(tempFilePath, file.buffer);
+        filePath = tempFilePath;
+      }
 
-        uploadStream.end(watermarkedBuffer);
-      } catch (error) {
-        console.error("[ERROR] Error uploading artwork:", error.message);
-        return res.status(500).json({
-          message: "Error uploading artwork",
-          error: error.message,
+      console.log("🔄 Uploading image to Cloudinary...");
+      const tempUpload = await cloudinary.uploader.upload(filePath, {
+        folder: "temp_uploads",
+      });
+
+      const imageUrl = tempUpload.secure_url;
+
+      // 🛡️ AI Image Detection
+      const isAI = await checkAIImage(imageUrl);
+      if (isAI.rejected) {
+        console.warn("❌ Image rejected:", isAI.reasons);
+        await cloudinary.uploader.destroy(tempUpload.public_id);
+        await unlinkFileAsync(filePath);
+        return res.status(400).json({
+          error: "Image rejected due to the following reasons:",
+          reasons: isAI.reasons,
         });
       }
-    });
-  });
-};
 
+      console.log("🔄 Uploading final watermarked image...");
+      const finalUpload = await cloudinary.uploader.upload(imageUrl, {
+        folder: "artworks",
+        transformation: [
+          {
+            overlay: "My Brand:artbid_luoaal",
+            width: 100, 
+            gravity: "south_east", 
+            opacity: 60, 
+            effect: "brightness:20", 
+            x: 10, 
+            y: 10,
+          },
+        ],
+      });
+
+      uploadedImages.push({
+        public_id: finalUpload.public_id,
+        url: finalUpload.secure_url,
+      });
+
+      // 🗑️ Cleanup: Delete temp files & Cloudinary temp upload
+      await unlinkFileAsync(filePath);
+      await cloudinary.uploader.destroy(tempUpload.public_id);
+    }
+
+    // ✅ Save artwork in DB
+    const artwork = await Artwork.create({
+      title,
+      description,
+      category,
+      imageUrl: uploadedImages,
+      owner: req.user._id,
+    });
+
+    res.status(201).json({
+      status: "success",
+      message: "Artwork uploaded successfully",
+      artwork,
+    });
+  } catch (error) {
+    console.error("❌ Upload Error:", error);
+    res.status(500).json({ error: "Internal server error", details: error.message });
+  }
+};
 /**
  * Get all artworks
  */
 export const getAllArtworks = async (req, res) => {
   try {
-    const artworks = await Artwork.find().populate("owner category", "name email name");
-    res.json({artworks});
+    const artworks = await Artwork.find().populate(
+      "owner category",
+      "name email name"
+    );
+
+    res.status(200).json({
+      status: "success",
+      message: "Successfully fetched artworks",
+      artworks,
+    });
   } catch (error) {
-    console.error("Error fetching artworks:", error.message); // Debug log
-    res
-      .status(500)
-      .json({ message: "Error fetching artworks", error: error.message });
+    console.error("[ERROR] Fetching artworks:", error.message);
+    res.status(500).json({
+      status: "error",
+      message: "Error fetching artworks",
+      error: error.message,
+    });
   }
 };
 
+/**
+ * Get single artwork by ID
+ */
 export const getArtwork = async (req, res) => {
   try {
-    const artworks = await Artwork.findById(req.params.id).populate("owner category", "name email name");
-    res.json({artworks});
+    const { id } = req.params;
+    const artwork = await Artwork.findById(id).populate(
+      "owner category",
+      "name email name"
+    );
+
+    if (!artwork) {
+      return res.status(404).json({
+        status: "error",
+        message: "Artwork not found",
+      });
+    }
+
+    res.status(200).json({
+      status: "success",
+      message: "Successfully fetched artwork",
+      artwork,
+    });
   } catch (error) {
-    console.error("Error fetching artworks:", error.message); // Debug log
-    res
-    .status(500)
-    .json({ message: "Error fetching artworks", error: error.message });
+    console.error("[ERROR] Fetching artwork:", error.message);
+    res.status(500).json({
+      status: "error",
+      message: "Error fetching artwork",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Get artworks of the logged-in user
+ */
+export const getUserArtworks = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const artworks = await Artwork.find({ owner: userId }).populate(
+      "category",
+      "name"
+    );
+
+    res.status(200).json({
+      status: "success",
+      message: "Successfully fetched your artworks",
+      artworks,
+    });
+  } catch (error) {
+    console.error("[ERROR] Fetching user artworks:", error.message);
+    res.status(500).json({
+      status: "error",
+      message: "Error fetching user artworks",
+      error: error.message,
+    });
   }
 };
 
@@ -99,27 +196,44 @@ export const getArtwork = async (req, res) => {
  */
 export const deleteArtwork = async (req, res) => {
   try {
-    const artwork = await Artwork.findById(req.params.id);
+    const { id } = req.params;
+    const artwork = await Artwork.findById(id);
 
     if (!artwork) {
-      console.error("Artwork not found:", req.params.id); // Debug log
-      return res.status(404).json({ message: "Artwork not found" });
+      return res.status(404).json({
+        status: "error",
+        message: "Artwork not found",
+      });
+    }
+
+    // Check if the logged-in user is the owner
+    if (artwork.owner.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        status: "error",
+        message: "You are not authorized to delete this artwork",
+      });
     }
 
     await artwork.deleteOne();
 
+    // Log deletion action
     await logAction(
       req.user,
       "Artwork Deleted",
-      `Deleted Artwork ID: ${req.params.id}`,
+      `Deleted Artwork ID: ${id}`,
       req.ip
     );
 
-    res.json({ message: "Artwork deleted successfully" });
+    res.status(200).json({
+      status: "success",
+      message: "Artwork deleted successfully",
+    });
   } catch (error) {
-    console.error("Error deleting artwork:", error.message); // Debug log
-    res
-      .status(500)
-      .json({ message: "Error deleting artwork", error: error.message });
+    console.error("[ERROR] Deleting artwork:", error.message);
+    res.status(500).json({
+      status: "error",
+      message: "Error deleting artwork",
+      error: error.message,
+    });
   }
 };
