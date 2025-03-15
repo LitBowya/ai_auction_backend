@@ -1,8 +1,6 @@
 import Artwork from "../models/Artwork.js";
 import cloudinary from "../config/cloudinary.js";
 import { logAction } from "./auditLogController.js";
-import { applyWatermark } from "../utils/imageWatermark.js";
-import { reverseImageSearch } from "../utils/clarifaiCheck.js";
 import { checkAIImage } from "../utils/sightengineCheck.js";
 import fs from "fs";
 import path from "path";
