@@ -20,6 +20,7 @@ export const placeBid = async (req, res) => {
     const auction = await Auction.findById(auctionId)
       .populate("artwork", "title")
       .populate("highestBidder", "name email");
+    
     if (!auction || auction.status !== "active") {
       return res.status(404).json({ success: false, message: "Auction not available" });
     }
@@ -37,11 +38,18 @@ export const placeBid = async (req, res) => {
     }
 
     if (auction.highestBid === 0 && amount < auction.startingPrice) {
-      return res.status(400).json({ success: false, message: `Bid must be at least $${auction.startingPrice}!` });
+      return res.status(400).json({ success: false, message: `Bid must be at least GHS ${auction.startingPrice}!` });
     }
 
     if (amount <= auction.highestBid) {
-      return res.status(400).json({ success: false, message: `Bid must be higher than $${auction.highestBid}!` });
+      return res.status(400).json({ success: false, message: `Bid must be higher than GHS ${auction.highestBid}!` });
+    }
+
+    if (auction.maxBidLimit && amount > auction.maxBidLimit) {
+      return res.status(400).json({
+        success: false,
+        message: `Bid cannot exceed the maximum limit of GHS ${auction.maxBidLimit}!`,
+      });
     }
 
     if (auction.highestBidder && auction.highestBidder._id.toString() !== userId.toString()) {

@@ -2,7 +2,7 @@ import Auction from "../models/Auction.js";
 import Artwork from "../models/Artwork.js";
 import { notifyHighestBidder } from "../utils/notification.js";
 import { auctionStartQueue, auctionEndQueue } from "../config/bullConfig.js";
-
+import mongoose from "mongoose";
 import { logAction } from "./auditLogController.js";
 
 /**
@@ -12,17 +12,26 @@ export const createAuction = async (req, res) => {
   try {
     const {
       artworkId,
-      categoryId,
+      category,
       startingPrice,
+      maxBidLimit,
       startingTime,
       biddingEndTime,
     } = req.body;
 
     // Validate required fields
-    if (!artworkId || !startingPrice || !startingTime || !biddingEndTime) {
+    if (!artworkId || !category || !startingPrice || !startingTime || !biddingEndTime) {
       return res.status(400).json({
         success: false,
         message: "Missing required auction information",
+      });
+    }
+
+    // Validate max bid limit
+    if (maxBidLimit && maxBidLimit <= startingPrice) {
+      return res.status(400).json({
+        success: false,
+        message: "Max bid limit must be higher than starting price",
       });
     }
 
@@ -35,7 +44,6 @@ export const createAuction = async (req, res) => {
     }
 
     // Validate dates
-    const currentDate = new Date();
     const startDate = new Date(startingTime);
     const endDate = new Date(biddingEndTime);
 
@@ -61,18 +69,12 @@ export const createAuction = async (req, res) => {
       });
     }
 
-    if (artwork.owner.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: "You are not the owner of this artwork",
-      });
-    }
-
     const auction = await Auction.create({
       artwork: artworkId,
       seller: req.user._id,
-      categoryId,
+      category,
       startingPrice,
+      maxBidLimit, // ✅ Save max bid limit
       startingTime,
       biddingEndTime,
       status: "pending",
@@ -185,9 +187,9 @@ export const endAuction = async (req, res) => {
  */
 export const getActiveAuctions = async (req, res) => {
   try {
-    const auctions = await Auction.find({ status: "active" })
+    const auctions = await Auction.find({ status: "active"})
       .populate("artwork")
-      .populate("seller", "name email");
+      .populate("title, description, imageUrl, category");
     
     if (auctions.length === 0) {
       return res.status(200).json({
@@ -217,8 +219,8 @@ export const getActiveAuctions = async (req, res) => {
 export const getAllAuctions = async (req, res) => {
   try {
     const auctions = await Auction.find({}).populate(
-      "artwork seller",
-      "title description imageUrl name email"
+      "artwork",
+      "title description imageUrl"
     );
     
     // Check if any auctions were found
@@ -257,8 +259,8 @@ export const getAuction = async (req, res) => {
     }
 
     const auction = await Auction.findById(id).populate(
-      "artwork seller",
-      "title description imageUrl name email"
+      "artwork",
+      "title description imageUrl"
     );
 
     // Check if auction exists
@@ -289,9 +291,9 @@ export const getAuction = async (req, res) => {
 export const getLatestAuction = async (req, res) => {
   try {
     // Find the latest auction based on the createdAt field (most recent first)
-    const latestAuction = await Auction.findOne({})
-      .sort({ createdAt: -1 })
-      .populate("artwork seller", "title description imageUrl name email");
+    const latestAuction = await Auction.find({})
+      .sort({ createdAt: -1 }).limit(3)
+      .populate("artwork", "title description imageUrl");
 
     if (!latestAuction) {
       return res.status(404).json({ 
@@ -335,13 +337,6 @@ export const deleteAuction = async (req, res) => {
       return res.status(404).json({ 
         success: false,
         message: "Auction not found" 
-      });
-    }
-
-    if (auction.seller.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ 
-        success: false,
-        message: "Unauthorized action. You must be the auction owner to delete it." 
       });
     }
 

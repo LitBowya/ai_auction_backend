@@ -40,7 +40,6 @@ export const uploadArtwork = async (req, res) => {
         filePath = tempFilePath;
       }
 
-      console.log("🔄 Uploading image to Cloudinary...");
       const tempUpload = await cloudinary.uploader.upload(filePath, {
         folder: "temp_uploads",
       });
@@ -108,8 +107,8 @@ export const uploadArtwork = async (req, res) => {
 export const getAllArtworks = async (req, res) => {
   try {
     const artworks = await Artwork.find().populate(
-      "owner category",
-      "name email name"
+      "category",
+      "name"
     );
 
     res.status(200).json({
@@ -134,8 +133,8 @@ export const getArtwork = async (req, res) => {
   try {
     const { id } = req.params;
     const artwork = await Artwork.findById(id).populate(
-      "owner category",
-      "name email name"
+      "category",
+      "name"
     );
 
     if (!artwork) {
@@ -166,7 +165,7 @@ export const getArtwork = async (req, res) => {
 export const getUserArtworks = async (req, res) => {
   try {
     const userId = req.user._id;
-    const artworks = await Artwork.find({ owner: userId }).populate(
+    const artworks = await Artwork.find({ userId }).populate(
       "category",
       "name"
     );
@@ -198,14 +197,6 @@ export const deleteArtwork = async (req, res) => {
       return res.status(404).json({
         status: "error",
         message: "Artwork not found",
-      });
-    }
-
-    // Check if the logged-in user is the owner
-    if (artwork.owner.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        status: "error",
-        message: "You are not authorized to delete this artwork",
       });
     }
 

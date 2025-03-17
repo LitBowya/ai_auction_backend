@@ -7,16 +7,12 @@ const auctionSchema = new mongoose.Schema(
       ref: "Artwork",
       required: true,
     },
-    seller: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
     category: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Category",
       required: true,
     },
+    maxBidLimit: { type: Number, required: true },
     startingPrice: { type: Number, required: true },
     highestBid: { type: Number, default: 0 },
     highestBidder: {
@@ -32,17 +28,6 @@ const auctionSchema = new mongoose.Schema(
       default: "pending",
     },
     bids: [{ type: mongoose.Schema.Types.ObjectId, ref: "Bid" }],
-    payoutMethod: {
-      type: String,
-      enum: ["visa", "bank_transfer", "momo"],
-      required: true,
-    },
-    payoutDetails: {
-      type: Map,
-      of: String,
-      required: true,
-    },
-    isSuspended: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
