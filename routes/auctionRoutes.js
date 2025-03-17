@@ -1,5 +1,5 @@
 import express from "express";
-import { protect } from "../middleware/authMiddleware.js";
+import { protect, isAdmin } from "../middleware/authMiddleware.js";
 import { isOwner } from "../middleware/ownershipMiddleware.js";
 import {
   createAuction,
@@ -16,9 +16,9 @@ const router = express.Router();
 router.get("/", getActiveAuctions);
 router.get("/all", getAllAuctions);
 router.get("/latest", getLatestAuction);
-router.post("/", protect, createAuction);
+router.post("/", protect, isAdmin, createAuction);
 router.get("/:id", getAuction)
-router.put("/:id", protect, endAuction);
-router.delete("/:id", protect, deleteAuction);
+router.put("/:id", protect,isAdmin, endAuction);
+router.delete("/:id", protect,isAdmin, deleteAuction);
 
 export default router;

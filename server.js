@@ -21,6 +21,9 @@ import shippingRoutes from "./routes/shippingRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 
+// Workers
+import './workers/auctionWorkers.js'
+
 // Import middleware
 import { errorHandler, notFound } from "./middleware/errorMiddleware.js";
 

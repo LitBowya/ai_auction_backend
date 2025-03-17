@@ -35,7 +35,6 @@ export const uploadArtwork = async (req, res) => {
 
       // 🔹 If file.path is missing, create a temp file
       if (!filePath) {
-        console.log("📝 Writing file from buffer...");
         const tempFilePath = path.join("/tmp", `${Date.now()}-${file.originalname}`);
         await writeFileAsync(tempFilePath, file.buffer);
         filePath = tempFilePath;
@@ -51,7 +50,6 @@ export const uploadArtwork = async (req, res) => {
       // 🛡️ AI Image Detection
       const isAI = await checkAIImage(imageUrl);
       if (isAI.rejected) {
-        console.warn("❌ Image rejected:", isAI.reasons);
         await cloudinary.uploader.destroy(tempUpload.public_id);
         await unlinkFileAsync(filePath);
         return res.status(400).json({
@@ -60,15 +58,14 @@ export const uploadArtwork = async (req, res) => {
         });
       }
 
-      console.log("🔄 Uploading final watermarked image...");
       const finalUpload = await cloudinary.uploader.upload(imageUrl, {
         folder: "artworks",
         transformation: [
           {
             overlay: "My Brand:artbid_luoaal",
-            width: 100, 
+            width: 80, 
             gravity: "south_east", 
-            opacity: 60, 
+            opacity: 50, 
             effect: "brightness:20", 
             x: 10, 
             y: 10,

@@ -14,7 +14,7 @@ const transporter = nodemailer.createTransport({
 });
 
 // Function to send OTP email
-export const sendOTP = async (email, otp) => {
+export const sendOTP = async (email, otp, subject, text) => {
   try {
     // Generate OTP expiration time (e.g., 10 minutes)
     const otpExpiration = new Date();
@@ -31,8 +31,8 @@ export const sendOTP = async (email, otp) => {
     const mailOptions = {
       from: process.env.GMAIL_USER,
       to: email,
-      subject: "Your OTP for Password Reset",
-      text: `Your OTP for resetting your password is: ${otp}. It will expire in 10 minutes.`,
+      subject: subject,
+      text: text,
     };
 
     await transporter.sendMail(mailOptions);

@@ -55,7 +55,7 @@ export const registerUser = async (req, res) => {
       });
 
       // Send OTP to the user's email
-      const emailResponse = await sendOTP(email, otp);
+      const emailResponse = await sendOTP(email, otp, subject='You have successfully registered', 'Your Otp verification code');
       if (!emailResponse.success) {
         return res.status(500).json({ success: false, message: emailResponse.message });
       }
@@ -179,7 +179,7 @@ export const requestPasswordReset = async (req, res) => {
     user.resetOtpExpires = new Date(Date.now() + 10 * 60 * 1000);
     await user.save();
 
-    const emailResponse = await sendOTP(email, otp);
+    const emailResponse = await sendOTP(email, otp, subject='Password Reset Requested', 'Your Otp verification code');
     if (!emailResponse.success) {
       return res.status(500).json({ success: false, message: emailResponse.message });
     }

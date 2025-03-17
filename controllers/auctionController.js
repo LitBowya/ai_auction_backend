@@ -1,33 +1,9 @@
 import Auction from "../models/Auction.js";
 import Artwork from "../models/Artwork.js";
-import Notification from "../models/Notification.js";
-import { sendEmail } from "../utils/email.js";
+import { notifyHighestBidder } from "../utils/notification.js";
+import { auctionStartQueue, auctionEndQueue } from "../config/bullConfig.js";
+
 import { logAction } from "./auditLogController.js";
-
-/**
- * Helper function to notify the highest bidder
- */
-const notifyHighestBidder = async (auction) => {
-  if (auction.highestBidder) {
-
-
-    const artworkTitle = auction.artwork.title;
-
-    // 📩 **Email Notification**
-    await sendEmail(
-      auction.highestBidder.email,
-      "Auction Won: Payment Required",
-      `Congratulations! You won the auction for "${artworkTitle}". Complete payment on the site.`
-    );
-
-    // 🔔 **Database Notification**
-    await Notification.create({
-      user: auction.highestBidder._id,
-      message: `You won the auction for "${artworkTitle}". Complete payment on the site.`,
-      type: "payment_due",
-    });
-  }
-};
 
 /**
  * Create a new auction
@@ -40,15 +16,13 @@ export const createAuction = async (req, res) => {
       startingPrice,
       startingTime,
       biddingEndTime,
-      payoutMethod,
-      payoutDetails,
     } = req.body;
 
     // Validate required fields
     if (!artworkId || !startingPrice || !startingTime || !biddingEndTime) {
       return res.status(400).json({
         success: false,
-        message: "Missing required auction information"
+        message: "Missing required auction information",
       });
     }
 
@@ -56,7 +30,7 @@ export const createAuction = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(artworkId)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid artwork ID format"
+        message: "Invalid artwork ID format",
       });
     }
 
@@ -68,14 +42,14 @@ export const createAuction = async (req, res) => {
     if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
       return res.status(400).json({
         success: false,
-        message: "Invalid date format"
+        message: "Invalid date format",
       });
     }
 
     if (endDate <= startDate) {
       return res.status(400).json({
         success: false,
-        message: "Bidding end time must be after starting time"
+        message: "Bidding end time must be after starting time",
       });
     }
 
@@ -83,14 +57,14 @@ export const createAuction = async (req, res) => {
     if (!artwork) {
       return res.status(404).json({
         success: false,
-        message: "Artwork not found"
+        message: "Artwork not found",
       });
     }
 
     if (artwork.owner.toString() !== req.user._id.toString()) {
       return res.status(403).json({
-        success: false, 
-        message: "You are not the owner of this artwork"
+        success: false,
+        message: "You are not the owner of this artwork",
       });
     }
 
@@ -101,46 +75,33 @@ export const createAuction = async (req, res) => {
       startingPrice,
       startingTime,
       biddingEndTime,
-      payoutMethod,
-      payoutDetails,
       status: "pending",
     });
 
-    // Automate Auction End, Notify Winner via Email & Notification
-    setTimeout(
-      async () => {
-        const updatedAuction = await Auction.findById(auction._id)
-          .populate("highestBidder", "name email")
-          .populate("artwork", "title");
-
-        if (updatedAuction && updatedAuction.status === "active") {
-          updatedAuction.status = "completed";
-          await updatedAuction.save();
-
-          // Notify the highest bidder
-          await notifyHighestBidder(updatedAuction);
-        }
-      },
-      new Date(biddingEndTime) - new Date()
+    // Schedule job to start the auction
+    await auctionStartQueue.add(
+      "startAuction",
+      { auctionId: auction._id },
+      { delay: startDate - new Date() }
     );
 
-    await logAction(
-      req.user,
-      "Auction Created",
-      `Auction for Artwork ID: ${artworkId} starting at ${startingTime}`,
-      req.ip
+    // Schedule job to end the auction
+    await auctionEndQueue.add(
+      "endAuction",
+      { auctionId: auction._id },
+      { delay: endDate - new Date() }
     );
 
     res.status(201).json({
       success: true,
-      message: "Auction created successfully",
-      data: auction
+      message: "Auction created successfully and scheduled",
+      data: auction,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
       message: "Error creating auction",
-      error: error.message
+      error: error.message,
     });
   }
 };
