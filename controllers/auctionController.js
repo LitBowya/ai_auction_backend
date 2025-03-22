@@ -1,7 +1,7 @@
 import Auction from "../models/Auction.js";
 import Artwork from "../models/Artwork.js";
 import { notifyHighestBidder } from "../utils/notification.js";
-import { auctionStartQueue, auctionEndQueue } from "../config/bullConfig.js";
+import { auctionEndQueue, auctionStartQueue } from "../config/bullConfig.js";
 import mongoose from "mongoose";
 import { logAction } from "./auditLogController.js";
 
@@ -20,7 +20,13 @@ export const createAuction = async (req, res) => {
     } = req.body;
 
     // Validate required fields
-    if (!artworkId || !category || !startingPrice || !startingTime || !biddingEndTime) {
+    if (
+      !artworkId ||
+      !category ||
+      !startingPrice ||
+      !startingTime ||
+      !biddingEndTime
+    ) {
       return res.status(400).json({
         success: false,
         message: "Missing required auction information",
@@ -114,37 +120,30 @@ export const createAuction = async (req, res) => {
 export const endAuction = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // Validate if ID is a valid MongoDB ObjectId
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid auction ID format"
+        message: "Invalid auction ID format",
       });
     }
 
     const auction = await Auction.findById(id)
       .populate("highestBidder", "name email")
       .populate("artwork", "title");
-      
+
     if (!auction) {
       return res.status(404).json({
         success: false,
-        message: "Auction not found"
-      });
-    }
-
-    if (auction.seller.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: "You are not the owner of this auction"
+        message: "Auction not found",
       });
     }
 
     if (auction.status === "completed") {
       return res.status(400).json({
         success: false,
-        message: "Auction is already completed"
+        message: "Auction is already completed",
       });
     }
 
@@ -165,19 +164,19 @@ export const endAuction = async (req, res) => {
       return res.status(200).json({
         success: true,
         message: "Auction ended successfully",
-        data: auction
+        data: auction,
       });
     }
 
     res.status(400).json({
       success: false,
-      message: `Cannot end auction with status: ${auction.status}`
+      message: `Cannot end auction with status: ${auction.status}`,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
       message: "Error ending auction",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -187,28 +186,28 @@ export const endAuction = async (req, res) => {
  */
 export const getActiveAuctions = async (req, res) => {
   try {
-    const auctions = await Auction.find({ status: "active"})
+    const auctions = await Auction.find({ status: "active" })
       .populate("artwork")
       .populate("title, description, imageUrl, category");
-    
+
     if (auctions.length === 0) {
       return res.status(200).json({
         success: true,
         message: "No active auctions found",
-        data: []
+        data: [],
       });
     }
-    
+
     res.status(200).json({
       success: true,
       message: "Active auctions retrieved successfully",
-      data: auctions
+      data: auctions,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
       message: "Error fetching active auctions",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -218,30 +217,45 @@ export const getActiveAuctions = async (req, res) => {
  */
 export const getAllAuctions = async (req, res) => {
   try {
-    const auctions = await Auction.find({}).populate(
-      "artwork",
-      "title description imageUrl"
-    );
-    
-    // Check if any auctions were found
-    if (auctions.length === 0) {
-      return res.status(200).json({ 
-        success: true, 
-        message: "No auctions found", 
-        data: [] 
-      });
+    let { page = 1, status } = req.query; // Get page and status from query params
+    page = parseInt(page, 10) || 1;
+    const limit = 6;
+    const skip = (page - 1) * limit;
+    const now = new Date();
+
+    let filter = {};
+    if (status === "active") {
+      filter = { biddingEndTime: { $gt: now } }; // Active auctions
+    } else if (status === "past") {
+      filter = { biddingEndTime: { $lt: now } }; // Past auctions
+    } else if (status === "upcoming") {
+      filter = { biddingStartTime: { $gt: now } }; // Upcoming auctions
     }
 
-    res.status(200).json({ 
-      success: true, 
-      message: "Auctions successfully retrieved", 
-      data: auctions 
+    const auctions = await Auction.find(filter)
+      .populate("artwork", "title description imageUrl")
+      .sort({ biddingEndTime: 1 })
+      .skip(skip)
+      .limit(limit);
+
+    const totalAuctions = await Auction.countDocuments(filter);
+    const totalPages = Math.ceil(totalAuctions / limit);
+
+    return res.status(200).json({
+      success: true,
+      message: "Auctions successfully retrieved",
+      data: auctions,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalAuctions,
+      },
     });
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: "Error fetching auctions", 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      message: "Error fetching auctions",
+      error: error.message,
     });
   }
 };
@@ -249,12 +263,12 @@ export const getAllAuctions = async (req, res) => {
 export const getAuction = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // Validate if ID is a valid MongoDB ObjectId
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Invalid auction ID format" 
+      return res.status(400).json({
+        success: false,
+        message: "Invalid auction ID format",
       });
     }
 
@@ -265,22 +279,22 @@ export const getAuction = async (req, res) => {
 
     // Check if auction exists
     if (!auction) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Auction not found" 
+      return res.status(404).json({
+        success: false,
+        message: "Auction not found",
       });
     }
 
     res.status(200).json({
-      success: true, 
-      message: "Auction successfully fetched", 
-      data: auction
+      success: true,
+      message: "Auction successfully fetched",
+      data: auction,
     });
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: "Error fetching auction", 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      message: "Error fetching auction",
+      error: error.message,
     });
   }
 };
@@ -292,20 +306,21 @@ export const getLatestAuction = async (req, res) => {
   try {
     // Find the latest auction based on the createdAt field (most recent first)
     const latestAuction = await Auction.find({})
-      .sort({ createdAt: -1 }).limit(3)
+      .sort({ createdAt: -1 })
+      .limit(3)
       .populate("artwork", "title description imageUrl");
 
     if (!latestAuction) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        message: "No auctions found." 
+        message: "No auctions found.",
       });
     }
 
     res.status(200).json({
       success: true,
       message: "Latest auction retrieved successfully",
-      data: latestAuction
+      data: latestAuction,
     });
   } catch (error) {
     res.status(500).json({
@@ -327,29 +342,33 @@ export const deleteAuction = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid auction ID format"
+        message: "Invalid auction ID format",
       });
     }
 
     const auction = await Auction.findById(id);
-    
+
     if (!auction) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        message: "Auction not found" 
+        message: "Auction not found",
       });
     }
 
     // Check if auction has bids and is active
-    if (auction.status === "active" && auction.bids && auction.bids.length > 0) {
+    if (
+      auction.status === "active" &&
+      auction.bids &&
+      auction.bids.length > 0
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Cannot delete an active auction that has bids"
+        message: "Cannot delete an active auction that has bids",
       });
     }
 
     await auction.deleteOne();
-    
+
     await logAction(
       req.user,
       "Auction Deleted",
@@ -357,15 +376,15 @@ export const deleteAuction = async (req, res) => {
       req.ip
     );
 
-    res.status(200).json({ 
+    res.status(200).json({
       success: true,
-      message: "Auction deleted successfully" 
+      message: "Auction deleted successfully",
     });
   } catch (error) {
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: "Error deleting auction", 
-      error: error.message 
+      message: "Error deleting auction",
+      error: error.message,
     });
   }
 };

@@ -1,12 +1,9 @@
 import User from "../models/User.js";
 import Auction from "../models/Auction.js";
-import AdminAction from "../models/AdminAction.js";
-import { sendEmail } from "../utils/email.js";
 import Payment from "../models/Payment.js";
 
 export const getAdminInsights = async (req, res) => {
   try {
-
     const totalUsers = await User.countDocuments();
     const totalBannedUsers = await User.countDocuments({ isBanned: true });
     const activeAuctions = await Auction.countDocuments({ status: "active" });
@@ -22,7 +19,6 @@ export const getAdminInsights = async (req, res) => {
       0
     );
 
-
     res.status(200).json({
       totalUsers,
       totalBannedUsers,
@@ -32,9 +28,10 @@ export const getAdminInsights = async (req, res) => {
       totalEarnings,
     });
   } catch (error) {
-    console.error("[ERROR] Failed to fetch admin insights:", error.message);
-    res
-      .status(500)
-      .json({ message: "Error fetching admin insights", error: error.message });
+    console.error("[ERROR] Failed to fetch (admin) insights:", error.message);
+    res.status(500).json({
+      message: "Error fetching (admin) insights",
+      error: error.message,
+    });
   }
 };

@@ -25,10 +25,6 @@ export const placeBid = async (req, res) => {
       return res.status(404).json({ success: false, message: "Auction not available" });
     }
 
-    if (auction.seller.toString() === userId.toString()) {
-      return res.status(403).json({ success: false, message: "You cannot bid on your own auction!" });
-    }
-
     if (new Date() < new Date(auction.startingTime)) {
       return res.status(400).json({ success: false, message: "Auction has not started yet!" });
     }

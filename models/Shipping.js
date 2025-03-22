@@ -7,12 +7,6 @@ const shippingSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    auction: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Auction",
-      required: true,
-      unique: true,
-    },
     name: { type: String, required: true },
     address: { type: String, required: true },
     city: { type: String, required: true },

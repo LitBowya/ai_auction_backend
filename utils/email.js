@@ -5,7 +5,7 @@ import User from "../models/User.js";
 dotenv.config();
 
 // Set up the email transporter
-const transporter = nodemailer.createTransport({
+export const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
     user: process.env.GMAIL_USER, // your Gmail address
@@ -84,7 +84,6 @@ export const sendEmail = async (to, subject, text) => {
       subject,
       text,
     });
-
   } catch (error) {
     console.error("[ERROR] Email sending failed:", error.message);
   }

@@ -1,15 +1,14 @@
 import express from "express";
 import {
-  setShippingDetails,
   getDefaultShipping,
+  setShippingDetails,
 } from "../controllers/shippingController.js";
 import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
+router.post("/", protect, setShippingDetails);
 
-router.post("/:auctionId", protect, setShippingDetails);
-
-router.get("/default", protect, getDefaultShipping);
+router.get("/", protect, getDefaultShipping);
 
 export default router;

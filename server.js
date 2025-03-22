@@ -20,9 +20,11 @@ import paymentRoutes from "./routes/paymentRoutes.js";
 import shippingRoutes from "./routes/shippingRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import contactRoutes from "./routes/contactRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
 
 // Workers
-import './workers/auctionWorkers.js'
+import "./workers/auctionWorkers.js";
 
 // Import middleware
 import { errorHandler, notFound } from "./middleware/errorMiddleware.js";
@@ -32,35 +34,34 @@ connectDB();
 
 const app = express();
 
-
 // Middleware
 // Set trust proxy based on your deployment scenario
-if (process.env.NODE_ENV === 'production') {
-  app.set('trust proxy', 1); // Trust first proxy if behind a reverse proxy
+if (process.env.NODE_ENV === "production") {
+  app.set("trust proxy", 1); // Trust first proxy if behind a reverse proxy
 } else {
-  app.set('trust proxy', false); // Disable trust proxy in development
+  app.set("trust proxy", false); // Disable trust proxy in development
 }
 
 app.use(helmet());
 app.use(
   cors({
-    origin: function(origin, callback) {
+    origin: function (origin, callback) {
       // Allow requests with no origin (like mobile apps, curl requests)
       if (!origin) return callback(null, true);
-      
+
       const allowedOrigins = [
         process.env.FRONTEND_URL,
-        `${process.env.FRONTEND_URL}/`
+        `${process.env.FRONTEND_URL}/`,
       ];
-      
+
       if (allowedOrigins.indexOf(origin) !== -1) {
         callback(null, true);
       } else {
-        callback(new Error('Not allowed by CORS'));
+        callback(new Error("Not allowed by CORS"));
       }
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    methods: ["GET", "POST", "PUT", "DELETE"],
   })
 );
 app.use(cookieParser());
@@ -93,8 +94,9 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/shipping", shippingRoutes);
 app.use("/api/category", categoryRoutes);
-app.use("/api/admin", adminRoutes);
-// app.use("/api/", apiLimiter);
+app.use("/api/(admin)", adminRoutes);
+app.use("/api/contact", contactRoutes);
+app.use("/api/users", userRoutes);
 
 // Error handling middleware
 app.use(notFound);

@@ -5,23 +5,11 @@ import Shipping from "../models/Shipping.js";
  */
 export const setShippingDetails = async (req, res) => {
   try {
-    const { auctionId } = req.params;
     const { name, address, city, postalCode, contactNumber, isDefault } =
       req.body;
-
-    // Check if shipping details already exist for this auction
-    const existingShipping = await Shipping.findOne({ auction: auctionId });
-    if (existingShipping) {
-      return res.status(400).json({
-        success: false,
-        message: "Shipping details already exist for this auction.",
-      });
-    }
-
     // Create new shipping details
     const shipping = await Shipping.create({
       buyer: req.user._id,
-      auction: auctionId,
       name,
       address,
       city,
