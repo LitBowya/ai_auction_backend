@@ -3,11 +3,13 @@ import {
   confirmShipment,
   initiatePayment,
   verifyPayment,
+  getAllPayment
 } from "../controllers/paymentController.js";
 import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
+router.get("/", protect, getAllPayment);
 router.post("/:auctionId/verify", protect, verifyPayment);
 router.post("/:auctionId/pay", protect, initiatePayment);
 router.put("/:paymentId/shipment", protect, confirmShipment);

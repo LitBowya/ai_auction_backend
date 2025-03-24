@@ -1,12 +1,13 @@
 import express from "express";
-import { protect, isAdmin } from "../middleware/authMiddleware.js";
+import { isAdmin, protect } from "../middleware/authMiddleware.js";
 import {
   createAuction,
-  getActiveAuctions,
-  endAuction,
-  getAllAuctions,
   deleteAuction,
+  endAuction,
+  getActiveAuctions,
+  getAllAuctions,
   getAuction,
+  getAuctionInsights,
   getLatestAuction,
 } from "../controllers/auctionController.js";
 
@@ -15,6 +16,7 @@ const router = express.Router();
 router.get("/active", getActiveAuctions);
 router.get("/all", getAllAuctions);
 router.get("/latest", getLatestAuction);
+router.get("/insights", getAuctionInsights);
 router.post("/", protect, isAdmin, createAuction);
 router.get("/:id", getAuction);
 router.put("/:id", protect, isAdmin, endAuction);

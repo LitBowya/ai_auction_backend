@@ -4,6 +4,7 @@ import { sendEmail } from "../utils/email.js";
 import paystack from "../utils/paystack.js";
 import Shipping from "../models/Shipping.js";
 import Order from "../models/Order.js";
+import axios from "axios"
 
 /**
  * 🔹 Initiate Payment (Highest Bidder Only)
@@ -93,7 +94,6 @@ export const initiatePayment = async (req, res) => {
 export const verifyPayment = async (req, res) => {
   try {
     const { auctionId } = req.params;
-    const userId = req.user._id; // Buyer verifying their payment
 
     // Find the auction
     const auction = await Auction.findById(auctionId).populate("highestBidder");
@@ -101,13 +101,6 @@ export const verifyPayment = async (req, res) => {
       return res
         .status(404)
         .json({ success: false, message: "Auction not found" });
-    }
-
-    // Ensure the user is the highest bidder (buyer)
-    if (auction.highestBidder._id.toString() !== userId.toString()) {
-      return res
-        .status(403)
-        .json({ success: false, message: "Unauthorized payment verification" });
     }
 
     // Find the payment associated with the auction
@@ -120,10 +113,21 @@ export const verifyPayment = async (req, res) => {
         .json({ success: false, message: "Payment not found" });
     }
 
+    // Check if the payment reference exists
+    if (!payment.reference) {
+      return res.status(400).json({
+        success: false,
+        message: "Payment reference is missing",
+      });
+    }
+
+    
+
     // Verify payment status with Paystack
     let response;
     try {
-      response = await paystack.transaction.verify(payment.reference);
+      const reference = payment.reference
+      response = await paystack.transaction.verify({reference});
     } catch (paystackError) {
       console.error(
         "[ERROR] Paystack verification failed:",
@@ -138,6 +142,7 @@ export const verifyPayment = async (req, res) => {
 
     // Check Paystack response
     if (!response || !response.data || response.data.status !== "success") {
+      console.error("Invalid Paystack response:", response);  // Log the full response if validation fails
       return res.status(400).json({
         success: false,
         message: "Payment verification failed",
@@ -197,6 +202,7 @@ export const verifyPayment = async (req, res) => {
     });
   }
 };
+
 /**
  * 🔹 Confirm Shipment by Seller
  */
@@ -235,3 +241,21 @@ export const confirmShipment = async (req, res) => {
     });
   }
 };
+
+export const getAllPayment = async (req,res) => {
+  try {
+    const payments = await Payment.find({}).populate("buyer", "name")
+
+    if (!payments){
+      res.status(404).json({success: false, message: "No payments found"})
+    }
+
+    res.status(200).json({success: true, message: "Payments fetched successfully", payments})
+  } catch (error) {
+    console.error("[ERROR] Fetching payments", error.message);
+    res
+      .status(500)
+      .json({ success: false, message: error.message });
+  
+  }
+}

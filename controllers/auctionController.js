@@ -230,6 +230,9 @@ export const getAllAuctions = async (req, res) => {
       filter = { biddingEndTime: { $lt: now } }; // Past auctions
     } else if (status === "upcoming") {
       filter = { biddingStartTime: { $gt: now } }; // Upcoming auctions
+    } else if (status === "all" || !status) {
+      // If status is "all" or not provided, fetch all auctions
+      filter = {}; // No filter, will return all auctions
     }
 
     const auctions = await Auction.find(filter)
@@ -384,6 +387,32 @@ export const deleteAuction = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error deleting auction",
+      error: error.message,
+    });
+  }
+};
+
+export const getAuctionInsights = async (req, res) => {
+  try {
+    const totalAuctions = await Auction.countDocuments();
+    const activeAuctions = await Auction.countDocuments({ status: "active" });
+    const completedAuctions = await Auction.countDocuments({
+      status: "completed",
+    });
+    const upcomingAuctions = await Auction.countDocuments({
+      status: "pending",
+    });
+
+    res.status(200).json({
+      totalAuctions,
+      activeAuctions,
+      completedAuctions,
+      upcomingAuctions,
+    });
+  } catch (error) {
+    console.error("[ERROR] Failed to fetch (admin) insights:", error.message);
+    res.status(500).json({
+      message: "Error fetching (admin) insights",
       error: error.message,
     });
   }
