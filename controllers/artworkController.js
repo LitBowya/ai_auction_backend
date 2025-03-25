@@ -52,8 +52,12 @@ export const uploadArtwork = async (req, res) => {
         await cloudinary.uploader.destroy(tempUpload.public_id);
         await unlinkFileAsync(filePath);
         return res.status(400).json({
-          error: "Image rejected due to the following reasons:",
-          reasons: isAI.reasons,
+          status: "error",
+          message: "AI-generated image detected",
+          error: {
+            type: "AI_DETECTION",
+            reasons: isAI.reasons,
+          },
         });
       }
 

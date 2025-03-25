@@ -22,6 +22,7 @@ import categoryRoutes from "./routes/categoryRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import contactRoutes from "./routes/contactRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
+import orderRoutes from "./routes/orderRoutes.js"
 
 // Workers
 import "./workers/auctionWorkers.js";
@@ -72,11 +73,10 @@ app.use(express.json({ limit: "5mb" }));
 app.use(xss());
 
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per window
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 500, // Limit each IP to 100 requests per window
   standardHeaders: true, // Return rate limit info in headers
   legacyHeaders: false, // Disable `X-RateLimit-*` headers
-  keyGenerator: (req) => req.ip, // Use correct IP
 });
 app.use(limiter);
 
@@ -87,7 +87,7 @@ app.get("/", (req, res) => {
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/artworks", artworkRoutes);
-app.use("/api/auction", auctionRoutes);
+app.use("/api/auctions", auctionRoutes);
 app.use("/api/bids", bidRoutes);
 app.use("/api/audits", auditRoutes);
 app.use("/api/notifications", notificationRoutes);
@@ -97,6 +97,7 @@ app.use("/api/category", categoryRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/contact", contactRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/orders", orderRoutes);
 
 // Error handling middleware
 app.use(notFound);

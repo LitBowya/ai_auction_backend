@@ -67,6 +67,7 @@ export const createAuction = async (req, res) => {
       });
     }
 
+    // Fetch the artwork details
     const artwork = await Artwork.findById(artworkId);
     if (!artwork) {
       return res.status(404).json({
@@ -75,6 +76,7 @@ export const createAuction = async (req, res) => {
       });
     }
 
+    // Create the auction
     const auction = await Auction.create({
       artwork: artworkId,
       seller: req.user._id,
@@ -100,10 +102,14 @@ export const createAuction = async (req, res) => {
       { delay: endDate - new Date() }
     );
 
+    // Respond with the auction data along with the artwork
     res.status(201).json({
       success: true,
       message: "Auction created successfully and scheduled",
-      data: auction,
+      data: {
+        auction,
+        artwork,  // Include the artwork in the response
+      },
     });
   } catch (error) {
     res.status(500).json({

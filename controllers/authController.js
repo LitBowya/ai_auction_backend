@@ -1,11 +1,15 @@
 import User from "../models/User.js"; // Adjust the import path as needed
 import cloudinary from "../config/cloudinary.js";
 import fs from "fs-extra";
+import path from "path";
+import { promisify } from "util";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { sendOTP } from "../utils/email.js";
 import { verifyOTP } from "../utils/email.js";
 import {singleImageUpload} from "../middleware/uploadSingleImageMiddleware.js";
+
+const unlinkFileAsync = promisify(fs.unlink);
 
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -36,7 +40,7 @@ export const registerUser = async (req, res) => {
       // Upload profile image to Cloudinary
       const filePath = req.file.path;
       const cloudinaryResponse = await cloudinary.uploader.upload(filePath, { folder: "profile_pics" });
-      fs.unlinkSync(filePath); // Remove the file from the server after upload
+      await unlinkFileAsync(filePath);// Remove the file from the server after upload
 
       // Generate OTP and set expiration time
       const otp = generateOTP();
@@ -55,7 +59,7 @@ export const registerUser = async (req, res) => {
       });
 
       // Send OTP to the user's email
-      const emailResponse = await sendOTP(email, otp, subject='You have successfully registered', 'Your Otp verification code');
+      const emailResponse = await sendOTP(email, otp, 'You have successfully registered', `Your Otp verification code ${otp}`);
       if (!emailResponse.success) {
         return res.status(500).json({ success: false, message: emailResponse.message });
       }

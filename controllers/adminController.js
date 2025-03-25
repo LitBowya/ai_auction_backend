@@ -9,10 +9,10 @@ export const getAdminInsights = async (req, res) => {
     const completedAuctions = await Auction.countDocuments({
       status: "completed",
     });
-    const totalPayments = await Payment.countDocuments({ status: "confirmed" });
+    const totalPayments = await Payment.countDocuments({ status: "paid" });
 
     // Calculate total earnings
-    const payments = await Payment.find({ status: "confirmed" });
+    const payments = await Payment.find({ status: "paid" });
     const totalEarnings = payments.reduce(
       (acc, payment) => acc + payment.amount,
       0
@@ -78,7 +78,7 @@ export const getAdminGraphInsights = async (req, res) => {
     // Fetch earnings over time (monthly)
     const earningsOverTime = await Payment.aggregate([
       {
-        $match: { status: "confirmed" },
+        $match: { status: "paid" },
       },
       {
         $group: {

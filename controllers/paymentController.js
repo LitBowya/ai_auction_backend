@@ -95,22 +95,18 @@ export const verifyPayment = async (req, res) => {
   try {
     const { auctionId } = req.params;
 
-    // Find the auction
+    // Find the auction and get the buyer (highestBidder)
     const auction = await Auction.findById(auctionId).populate("highestBidder");
     if (!auction) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Auction not found" });
+      return res.status(404).json({ success: false, message: "Auction not found" });
     }
 
+    const buyerId = auction.highestBidder._id; // This is the buyer
+
     // Find the payment associated with the auction
-    const payment = await Payment.findOne({ auction: auctionId }).populate(
-      "buyer"
-    );
+    const payment = await Payment.findOne({ auction: auctionId }).populate("buyer");
     if (!payment) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Payment not found" });
+      return res.status(404).json({ success: false, message: "Payment not found" });
     }
 
     // Check if the payment reference exists
@@ -121,18 +117,13 @@ export const verifyPayment = async (req, res) => {
       });
     }
 
-    
-
     // Verify payment status with Paystack
     let response;
     try {
-      const reference = payment.reference
-      response = await paystack.transaction.verify({reference});
+      const reference = payment.reference;
+      response = await paystack.transaction.verify({ reference });
     } catch (paystackError) {
-      console.error(
-        "[ERROR] Paystack verification failed:",
-        paystackError.message
-      );
+      console.error("[ERROR] Paystack verification failed:", paystackError.message);
       return res.status(500).json({
         success: false,
         message: "Error verifying payment with Paystack",
@@ -142,7 +133,7 @@ export const verifyPayment = async (req, res) => {
 
     // Check Paystack response
     if (!response || !response.data || response.data.status !== "success") {
-      console.error("Invalid Paystack response:", response);  // Log the full response if validation fails
+      console.error("Invalid Paystack response:", response); // Log the full response if validation fails
       return res.status(400).json({
         success: false,
         message: "Payment verification failed",
@@ -157,17 +148,21 @@ export const verifyPayment = async (req, res) => {
       });
     }
 
-    // Update payment status to "paid"
-    payment.status = "paid";
-    payment.verified = true;
-    await payment.save();
+    // Find the buyer's shipping addresses
+    const shippingAddresses = await Shipping.find({ buyer: buyerId });
+    if (!shippingAddresses || shippingAddresses.length === 0) {
+      return res.status(404).json({ success: false, message: "No shipping addresses found" });
+    }
 
-    // Find shipping details
-    const shipping = await Shipping.findOne({ auction: auctionId });
-    if (!shipping) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Shipping details not found" });
+    // If the frontend doesn't provide a shipping address, select the default one
+    let shipping;
+    const defaultShipping = shippingAddresses.find(address => address.isDefault);
+
+    if (defaultShipping) {
+      shipping = defaultShipping;  // Use the default address
+    } else {
+      // If there's no default address, pick the first available address
+      shipping = shippingAddresses[0]; 
     }
 
     // Create the order
@@ -175,11 +170,16 @@ export const verifyPayment = async (req, res) => {
       auction: auction._id,
       buyer: auction.highestBidder._id,
       payment: payment._id,
-      shipping: shipping._id,
-      status: "pending",
+      shipping: shipping._id, // Link the shipping address
+      status: "shipped",
     });
 
     console.log("[INFO] Order created successfully:", order._id);
+
+    // Update payment status to "paid"
+    payment.status = "paid";
+    payment.verified = true;
+    await payment.save();
 
     // Notify Admin (Seller)
     await sendEmail(
@@ -208,37 +208,36 @@ export const verifyPayment = async (req, res) => {
  */
 export const confirmShipment = async (req, res) => {
   try {
-    const { paymentId } = req.params;
-    const payment = await Payment.findById(paymentId).populate(
-      "buyer",
-      "email"
-    );
+      const { paymentId } = req.params;
+      const payment = await Payment.findById(paymentId); //Corrected findById usage.
 
-    if (!payment)
-      return res
-        .status(404)
-        .json({ success: false, message: "Payment not found" });
+      if (!payment) {
+          return res.status(404).json({
+              success: false,
+              message: "Payment not found",
+          });
+      }
 
-    payment.status = "shipped";
-    payment.shipmentConfirmed = true;
-    await payment.save();
+      payment.status = "shipped";
+      payment.shipmentConfirmed = true;
+      await payment.save();
 
-    await sendEmail(
-      payment.buyer.email,
-      "Artwork shipped",
-      `Your bought product have been shipped.`
-    );
+      await sendEmail(
+          payment.buyer.email,
+          "Artwork shipped",
+          "Your bought product have been shipped."
+      );
 
-    res.status(200).json({
-      success: true,
-      message: "Shipment confirmed",
-    });
+      res.status(200).json({
+          success: true,
+          message: "Shipment confirmed",
+      });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Shipment confirmation failed",
-      error: error.message,
-    });
+      res.status(500).json({
+          success: false,
+          message: "Shipment confirmation failed",
+          error: error.message,
+      });
   }
 };
 
