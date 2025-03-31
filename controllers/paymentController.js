@@ -4,7 +4,6 @@ import { sendEmail } from "../utils/email.js";
 import paystack from "../utils/paystack.js";
 import Shipping from "../models/Shipping.js";
 import Order from "../models/Order.js";
-import axios from "axios"
 
 /**
  * 🔹 Initiate Payment (Highest Bidder Only)
@@ -98,15 +97,21 @@ export const verifyPayment = async (req, res) => {
     // Find the auction and get the buyer (highestBidder)
     const auction = await Auction.findById(auctionId).populate("highestBidder");
     if (!auction) {
-      return res.status(404).json({ success: false, message: "Auction not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Auction not found" });
     }
 
     const buyerId = auction.highestBidder._id; // This is the buyer
 
     // Find the payment associated with the auction
-    const payment = await Payment.findOne({ auction: auctionId }).populate("buyer");
+    const payment = await Payment.findOne({ auction: auctionId }).populate(
+      "buyer"
+    );
     if (!payment) {
-      return res.status(404).json({ success: false, message: "Payment not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Payment not found" });
     }
 
     // Check if the payment reference exists
@@ -123,7 +128,10 @@ export const verifyPayment = async (req, res) => {
       const reference = payment.reference;
       response = await paystack.transaction.verify({ reference });
     } catch (paystackError) {
-      console.error("[ERROR] Paystack verification failed:", paystackError.message);
+      console.error(
+        "[ERROR] Paystack verification failed:",
+        paystackError.message
+      );
       return res.status(500).json({
         success: false,
         message: "Error verifying payment with Paystack",
@@ -151,18 +159,22 @@ export const verifyPayment = async (req, res) => {
     // Find the buyer's shipping addresses
     const shippingAddresses = await Shipping.find({ buyer: buyerId });
     if (!shippingAddresses || shippingAddresses.length === 0) {
-      return res.status(404).json({ success: false, message: "No shipping addresses found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "No shipping addresses found" });
     }
 
     // If the frontend doesn't provide a shipping address, select the default one
     let shipping;
-    const defaultShipping = shippingAddresses.find(address => address.isDefault);
+    const defaultShipping = shippingAddresses.find(
+      (address) => address.isDefault
+    );
 
     if (defaultShipping) {
-      shipping = defaultShipping;  // Use the default address
+      shipping = defaultShipping; // Use the default address
     } else {
       // If there's no default address, pick the first available address
-      shipping = shippingAddresses[0]; 
+      shipping = shippingAddresses[shippingAddresses.length - 1];
     }
 
     // Create the order
@@ -174,6 +186,9 @@ export const verifyPayment = async (req, res) => {
       status: "shipped",
     });
 
+    const buyer = auction.highestBidder._id.email
+    console.log(buyer)
+
     console.log("[INFO] Order created successfully:", order._id);
 
     // Update payment status to "paid"
@@ -183,6 +198,7 @@ export const verifyPayment = async (req, res) => {
 
     // Notify Admin (Seller)
     await sendEmail(
+      buyer.email,
       process.env.GMAIL_USER, // Admin is the seller
       "New Payment Received",
       `A payment has been verified for Auction: ${auction._id}. Please prepare for shipping.`
@@ -208,53 +224,54 @@ export const verifyPayment = async (req, res) => {
  */
 export const confirmShipment = async (req, res) => {
   try {
-      const { paymentId } = req.params;
-      const payment = await Payment.findById(paymentId); //Corrected findById usage.
+    const { paymentId } = req.params;
+    const payment = await Payment.findById(paymentId); //Corrected findById usage.
 
-      if (!payment) {
-          return res.status(404).json({
-              success: false,
-              message: "Payment not found",
-          });
-      }
-
-      payment.status = "shipped";
-      payment.shipmentConfirmed = true;
-      await payment.save();
-
-      await sendEmail(
-          payment.buyer.email,
-          "Artwork shipped",
-          "Your bought product have been shipped."
-      );
-
-      res.status(200).json({
-          success: true,
-          message: "Shipment confirmed",
+    if (!payment) {
+      return res.status(404).json({
+        success: false,
+        message: "Payment not found",
       });
+    }
+
+    payment.status = "shipped";
+    payment.shipmentConfirmed = true;
+    await payment.save();
+
+    await sendEmail(
+      payment.buyer.email,
+      "Artwork shipped",
+      "Your bought product have been shipped."
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Shipment confirmed",
+    });
   } catch (error) {
-      res.status(500).json({
-          success: false,
-          message: "Shipment confirmation failed",
-          error: error.message,
-      });
+    res.status(500).json({
+      success: false,
+      message: "Shipment confirmation failed",
+      error: error.message,
+    });
   }
 };
 
-export const getAllPayment = async (req,res) => {
+export const getAllPayment = async (req, res) => {
   try {
-    const payments = await Payment.find({}).populate("buyer", "name")
+    const payments = await Payment.find({}).populate("buyer", "name");
 
-    if (!payments){
-      res.status(404).json({success: false, message: "No payments found"})
+    if (!payments) {
+      res.status(404).json({ success: false, message: "No payments found" });
     }
 
-    res.status(200).json({success: true, message: "Payments fetched successfully", payments})
+    res.status(200).json({
+      success: true,
+      message: "Payments fetched successfully",
+      payments,
+    });
   } catch (error) {
     console.error("[ERROR] Fetching payments", error.message);
-    res
-      .status(500)
-      .json({ success: false, message: error.message });
-  
+    res.status(500).json({ success: false, message: error.message });
   }
-}
+};

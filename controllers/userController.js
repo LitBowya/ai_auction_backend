@@ -71,11 +71,7 @@ export const getUserOrders = async (req, res) => {
         populate: [
           {
             path: 'artwork',
-            select: 'title description imageUrl category createdAt',
-            populate: {
-              path: 'category',
-              select: 'name' // Only get category name
-            }
+            select: 'title description imageUrl category createdAt pptxFile',
           },
           {
             path: 'highestBidder',
@@ -84,7 +80,7 @@ export const getUserOrders = async (req, res) => {
         ]
       })
       .populate('payment', 'status amount') // Only get payment status and amount
-      .populate('shipping', 'address trackingNumber') // Only get shipping essentials
+      .populate('shipping', 'address') // Only get shipping essentials
       .sort({ createdAt: -1 }); // Sort by newest first
 
     if (!orders || orders.length === 0) {
@@ -116,7 +112,14 @@ export const getUserOrders = async (req, res) => {
 export const getUserPayments = async (req, res) => {
   try {
     const { userId } = req.params; // Extract userId from URL parameters
-    const payments = await Payment.find({ buyer: userId }).populate("auction");
+    const payments = await Payment.find({ buyer: userId })
+    .populate({
+        path: "auction",
+        populate: {
+            path: "artwork" // Populating the `artwork` inside `auction`
+        }
+    });
+
     res.status(200).json({ success: true, payments });
   } catch (error) {
     console.error("[ERROR] Fetching user payments failed:", error.message);
@@ -132,7 +135,7 @@ export const getUserPayments = async (req, res) => {
 export const getUserAuctions = async (req, res) => {
   try {
     const { userId } = req.params; // Extract userId from URL parameters
-    const auctions = await Auction.find({ highestBidder: userId });
+    const auctions = await Auction.find({ highestBidder: userId }).populate("artwork");
     res.status(200).json({ success: true, auctions });
   } catch (error) {
     console.error("[ERROR] Fetching user auctions failed:", error.message);

@@ -2,7 +2,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 
-// Set storage directory
+// Set storage directory dynamically
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const uploadDir = path.resolve("tmp");
@@ -19,8 +19,8 @@ const storage = multer.diskStorage({
   },
 });
 
-// Filter to allow only images
-const fileFilter = (req, file, cb) => {
+// File filter for **Images**
+const imageFilter = (req, file, cb) => {
   const allowedTypes = /jpeg|jpg|png|gif/;
   const extName = allowedTypes.test(path.extname(file.originalname).toLowerCase());
   const mimeType = allowedTypes.test(file.mimetype);
@@ -28,20 +28,31 @@ const fileFilter = (req, file, cb) => {
   if (extName && mimeType) {
     cb(null, true);
   } else {
-    cb(new Error("Only images are allowed!"));
+    cb(new Error("Only images (jpeg, jpg, png, gif) are allowed!"));
   }
 };
 
-// Initialize upload
+// Multer instance for **Single Image Upload**
 export const singleImageUpload = multer({
   storage,
-  fileFilter,
+  fileFilter: imageFilter,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
 });
 
-// Multer upload function for multiple files
-export const uploadMultiple = multer({
+export const uploadArtworkFiles = multer({
   storage,
-  fileFilter,
-}).array("images", 10); // Max 10 images
-
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB max for PPTX, 5MB for images
+  fileFilter: (req, file, cb) => {
+    if (
+      file.mimetype === "application/vnd.openxmlformats-officedocument.presentationml.presentation" ||
+      /jpeg|jpg|png|gif/.test(file.mimetype)
+    ) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only images (jpeg, jpg, png, gif) and .pptx files are allowed!"));
+    }
+  },
+}).fields([
+  { name: "images", maxCount: 10 }, // Handle multiple images
+  { name: "pptx", maxCount: 1 }, // Handle single PPTX file
+]);

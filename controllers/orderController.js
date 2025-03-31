@@ -4,7 +4,7 @@ export const getOrders = async (req, res) => {
   try {
     const orders = await Order.find()
       .sort({ createdAt: -1 })
-      .populate("buyer", "name")  // Populating only the 'name' field of the buyer
+      .populate("buyer", "name email")  // Populating only the 'name' field of the buyer
       .populate("shipping", "name address city postalCode contactNumber")  // Populating the specific fields of the shipping
       .populate("auction", "highestBid artwork")  // Populating 'auction' with 'highestBid' and 'artwork' field
       .populate({

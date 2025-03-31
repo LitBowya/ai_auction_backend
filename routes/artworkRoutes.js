@@ -6,12 +6,12 @@ import {
   deleteArtwork,
   getArtwork
 } from "../controllers/artworkController.js";
-import { uploadMultiple } from "../middleware/uploadSingleImageMiddleware.js";
+import { uploadArtworkFiles } from "../middleware/uploadSingleImageMiddleware.js";
 
 const router = express.Router();
 
 router.get("/", getAllArtworks);
-router.post("/", uploadMultiple, protect, isAdmin, uploadArtwork);
+router.post("/", protect, isAdmin, uploadArtworkFiles, uploadArtwork);
 router.get("/:id", getArtwork)
 router.delete("/:id", protect, isAdmin, deleteArtwork);
 
