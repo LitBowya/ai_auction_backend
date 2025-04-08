@@ -187,10 +187,6 @@ export const verifyPayment = async (req, res) => {
     });
 
     const buyer = auction.highestBidder._id.email
-    console.log(buyer)
-
-    console.log("[INFO] Order created successfully:", order._id);
-
     // Update payment status to "paid"
     payment.status = "paid";
     payment.verified = true;

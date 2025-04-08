@@ -1,8 +1,8 @@
 import Auction from "../models/Auction.js";
 import Artwork from "../models/Artwork.js";
 import { notifyHighestBidder } from "../utils/notification.js";
-import { auctionEndQueue, auctionStartQueue } from "../config/bullConfig.js";
 import mongoose from "mongoose";
+import agenda from '../config/agenda.js';
 import { logAction } from "./auditLogController.js";
 
 /**
@@ -88,19 +88,20 @@ export const createAuction = async (req, res) => {
       status: "pending",
     });
 
-    // Schedule job to start the auction
-    await auctionStartQueue.add(
-      "startAuction",
-      { auctionId: auction._id },
-      { delay: startDate - new Date() }
+    // Schedule job to start the auction using Agenda
+    await agenda.schedule(
+      new Date(startingTime),
+      'startAuction',
+      { auctionId: auction._id.toString() }
     );
 
     // Schedule job to end the auction
-    await auctionEndQueue.add(
-      "endAuction",
-      { auctionId: auction._id },
-      { delay: endDate - new Date() }
+    await agenda.schedule(
+      new Date(biddingEndTime),
+      'endAuction',
+      { auctionId: auction._id.toString() }
     );
+
 
     // Respond with the auction data along with the artwork
     res.status(201).json({

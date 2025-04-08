@@ -2,7 +2,6 @@ import axios from "axios";
 
 export const checkAIImage = async (imageUrl) => {
   try {
-    console.log("Checking image for AI-generated content, nudity, and text/watermark:", imageUrl);
 
     const response = await axios.get("https://api.sightengine.com/1.0/check.json", {
       params: {

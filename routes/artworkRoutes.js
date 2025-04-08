@@ -11,8 +11,8 @@ import { uploadArtworkFiles } from "../middleware/uploadSingleImageMiddleware.js
 const router = express.Router();
 
 router.get("/", getAllArtworks);
-router.post("/", protect, isAdmin, uploadArtworkFiles, uploadArtwork);
+router.post("/", protect, uploadArtworkFiles, uploadArtwork);
 router.get("/:id", getArtwork)
-router.delete("/:id", protect, isAdmin, deleteArtwork);
+router.delete("/:id",protect, isAdmin ,deleteArtwork);
 
 export default router;

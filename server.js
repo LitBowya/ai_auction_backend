@@ -24,8 +24,7 @@ import contactRoutes from "./routes/contactRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js"
 
-// Workers
-import "./workers/auctionWorkers.js";
+import agenda from "./config/agenda.js";
 
 // Import middleware
 import { errorHandler, notFound } from "./middleware/errorMiddleware.js";
@@ -102,6 +101,13 @@ app.use("/api/orders", orderRoutes);
 // Error handling middleware
 app.use(notFound);
 app.use(errorHandler);
+
+process.on('SIGINT', async () => {
+  console.log('Closing agenda gracefully...');
+  await agenda.stop(); // Stops Agenda's background job processing
+  console.log('Agenda stopped');
+  process.exit(0); // Exit the process
+});
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 My server is running on port ${PORT}`));

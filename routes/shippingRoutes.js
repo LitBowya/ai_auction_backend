@@ -9,6 +9,6 @@ const router = express.Router();
 
 router.post("/", protect, setShippingDetails);
 
-router.get("/", protect, getDefaultShipping);
+router.get("/", getDefaultShipping);
 
 export default router;
