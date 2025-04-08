@@ -13,7 +13,7 @@ import { protect, isAdmin } from "../middleware/authMiddleware.js";
 const router = express.Router();
 
 // Use userId as a URL parameter
-router.get("/", protect, isAdmin , getAllUsers);
+router.get("/", protect , getAllUsers);
 router.get("/:userId/profile", protect, getUserProfile);
 router.put("/:userId/profile", protect,  updateUserProfile);
 router.get("/:userId/orders",  protect, getUserOrders);

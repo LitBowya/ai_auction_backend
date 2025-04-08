@@ -13,6 +13,6 @@ const router = express.Router();
 router.get("/", getAllArtworks);
 router.post("/", protect, uploadArtworkFiles, uploadArtwork);
 router.get("/:id", getArtwork)
-router.delete("/:id",protect, isAdmin ,deleteArtwork);
+router.delete("/:id",protect ,deleteArtwork);
 
 export default router;
