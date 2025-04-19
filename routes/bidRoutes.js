@@ -13,6 +13,6 @@ const router = express.Router();
 router.get("/", getUserBids);
 router.get("/:auctionId", getAuctionBids);
 router.get("/highest/:auctionId", getAuctionHighestBid);
-router.post("/:auctionId",protect, placeBid);
+router.post("/:auctionId", placeBid);
 
 export default router;

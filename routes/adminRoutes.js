@@ -7,7 +7,7 @@ import {
 
 const router = express.Router();
 
-router.get("/",protect,getAdminInsights);
-router.get("/insights", protect, getAdminGraphInsights);
+router.get("/",getAdminInsights);
+router.get("/insights", getAdminGraphInsights);
 
 export default router;
