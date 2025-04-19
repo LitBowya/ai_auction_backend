@@ -7,7 +7,7 @@ import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-router.post("/", setShippingDetails);
+router.post("/", protect, setShippingDetails);
 
 router.get("/", getDefaultShipping);
 

@@ -10,8 +10,8 @@ import { protect } from "../middleware/authMiddleware.js";
 const router = express.Router();
 
 router.get("/", getAllPayment);
-router.post("/:auctionId/verify", verifyPayment);
-router.post("/:auctionId/pay", initiatePayment);
-router.put("/:paymentId/shipment", confirmShipment);
+router.post("/:auctionId/verify", protect, verifyPayment);
+router.post("/:auctionId/pay", protect, initiatePayment);
+router.put("/:paymentId/shipment", protect, confirmShipment);
 
 export default router;

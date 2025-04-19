@@ -4,7 +4,7 @@ import {
   uploadArtwork,
   getAllArtworks,
   deleteArtwork,
-  getArtwork,
+  getArtwork
 } from "../controllers/artworkController.js";
 import { uploadArtworkFiles } from "../middleware/uploadSingleImageMiddleware.js";
 
@@ -12,7 +12,7 @@ const router = express.Router();
 
 router.get("/", getAllArtworks);
 router.post("/", protect, uploadArtworkFiles, uploadArtwork);
-router.get("/:id", getArtwork);
-router.delete("/:id", deleteArtwork);
+router.get("/:id", getArtwork)
+router.delete("/:id",z ,deleteArtwork);
 
 export default router;
