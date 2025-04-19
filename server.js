@@ -42,28 +42,15 @@ if (process.env.NODE_ENV === "production") {
   app.set("trust proxy", false); // Disable trust proxy in development
 }
 
-app.use(helmet());
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      // Allow requests with no origin (like mobile apps, curl requests)
-      if (!origin) return callback(null, true);
-
-      const allowedOrigins = [
-        process.env.FRONTEND_URL,
-        `${process.env.FRONTEND_URL}/`,
-      ];
-
-      if (allowedOrigins.indexOf(origin) !== -1) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE"],
-  })
-);
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  `${process.env.FRONTEND_URL}/`
+];
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE"],
+}));
 app.use(cookieParser());
 app.use(compression());
 app.use(bodyParser.json());
