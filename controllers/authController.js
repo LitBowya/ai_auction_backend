@@ -155,8 +155,8 @@ export const loginUser = async (req, res) => {
 
     res.cookie("jwt", token, {
       httpOnly: true,
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // Change from 'strict' to 'lax' in dev
-      secure: process.env.NODE_ENV === "production",
+      sameSite: "none",
+      secure: true,
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
       path: '/', // Ensure cookies are sent for all paths
     });
