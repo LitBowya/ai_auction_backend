@@ -22,7 +22,7 @@ import categoryRoutes from "./routes/categoryRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import contactRoutes from "./routes/contactRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
-import orderRoutes from "./routes/orderRoutes.js"
+import orderRoutes from "./routes/orderRoutes.js";
 
 import agenda from "./config/agenda.js";
 
@@ -44,13 +44,30 @@ if (process.env.NODE_ENV === "production") {
 
 const allowedOrigins = [
   process.env.FRONTEND_URL,
-  `${process.env.FRONTEND_URL}/`
+  // Add any other origins if needed
 ];
-app.use(cors({
-  origin: allowedOrigins,
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE"],
-}));
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps, curl, etc)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.indexOf(origin) === -1) {
+        return callback(null, allowedOrigins[0]); // Default to frontend URL
+      }
+      return callback(null, true);
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  })
+);
+// Add Vary header for proper caching
+app.use((req, res, next) => {
+  res.header('Vary', 'Origin');
+  next();
+});
 app.use(cookieParser());
 app.use(compression());
 app.use(bodyParser.json());
@@ -89,10 +106,10 @@ app.use("/api/orders", orderRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
-process.on('SIGINT', async () => {
-  console.log('Closing agenda gracefully...');
+process.on("SIGINT", async () => {
+  console.log("Closing agenda gracefully...");
   await agenda.stop(); // Stops Agenda's background job processing
-  console.log('Agenda stopped');
+  console.log("Agenda stopped");
   process.exit(0); // Exit the process
 });
 

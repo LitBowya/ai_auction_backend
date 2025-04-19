@@ -155,9 +155,10 @@ export const loginUser = async (req, res) => {
 
     res.cookie("jwt", token, {
       httpOnly: true,
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "strict", // Allow cross-origin cookies in production
-      secure: process.env.NODE_ENV === "production",  // Ensure cookies are sent only over HTTPS in production
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // Change from 'strict' to 'lax' in dev
+      secure: process.env.NODE_ENV === "production",
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      path: '/', // Ensure cookies are sent for all paths
     });
 
     res.status(200).json({ success: true, message: "Login successful", user });

@@ -3,6 +3,8 @@ import User from "../models/User.js";
 
 const protect = async (req, res, next) => {
   try {
+    console.log("Headers:", req.headers);
+    console.log("Cookies:", req.cookies);
     const token = req.cookies?.jwt;
 
     if (!token) {
@@ -12,7 +14,6 @@ const protect = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     req.user = await User.findById(decoded.userId).select("-password");
-
 
     if (!req.user) {
       return res
