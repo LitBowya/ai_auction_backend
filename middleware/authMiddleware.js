@@ -3,8 +3,6 @@ import User from "../models/User.js";
 
 const protect = async (req, res, next) => {
   try {
-    console.log("Headers:", req.headers);
-    console.log("Cookies:", req.cookies);
     const token = req.cookies?.jwt;
 
     if (!token) {

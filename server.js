@@ -70,13 +70,14 @@ app.use((req, res, next) => {
 });
 app.use(cookieParser());
 app.use(compression());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.json({ limit: "5mb" }));
+app.use(express.json({ limit: "100mb" }));
+app.use(bodyParser.json({ limit: "100mb" }));
+app.use(bodyParser.urlencoded({ limit: "100mb", extended: true }));
+
 app.use(xss());
 
 const limiter = rateLimit({
-  windowMs: 5 * 60 * 1000, // 5 minutes
+  windowMs: 100 * 60 * 1000, // 5 minutes
   max: 500, // Limit each IP to 100 requests per window
   standardHeaders: true, // Return rate limit info in headers
   legacyHeaders: false, // Disable `X-RateLimit-*` headers
