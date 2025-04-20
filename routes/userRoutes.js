@@ -1,23 +1,23 @@
 import express from "express";
 import {
+  getAllUsers,
   getUserAuctions,
   getUserOrders,
   getUserPayments,
   getUserProfile,
   updateUserProfile,
-  getAllUsers,
 } from "../controllers/userController.js";
 
-import { protect, isAdmin } from "../middleware/authMiddleware.js";
+import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
 // Use userId as a URL parameter
-router.get("/", protect , getAllUsers);
-router.get("/:userId/profile", protect, getUserProfile);
-router.put("/:userId/profile", protect,  updateUserProfile);
-router.get("/:userId/orders",  protect, getUserOrders);
-router.get("/:userId/payments", protect,  getUserPayments);
-router.get("/:userId/auctions",  protect, getUserAuctions);
+router.get("/", protect, getAllUsers);
+router.get("/:userId/profile", getUserProfile);
+router.put("/:userId/profile", updateUserProfile);
+router.get("/:userId/orders", getUserOrders);
+router.get("/:userId/payments", getUserPayments);
+router.get("/:userId/auctions", getUserAuctions);
 
 export default router;
