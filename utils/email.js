@@ -46,7 +46,12 @@ export const verifyOTP = async (email, otp) => {
 };
 
 // Function to send OTP email
-export const sendOTP = async (email, otp, subject = "Your Verification Code", text = "") => {
+export const sendOTP = async (
+  email,
+  otp,
+  subject = "Your Verification Code",
+  text = ""
+) => {
   try {
     // Generate OTP expiration time (e.g., 10 minutes)
     const otpExpiration = new Date();
@@ -68,7 +73,7 @@ export const sendOTP = async (email, otp, subject = "Your Verification Code", te
           <div style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #2980b9; margin: 15px 0;">${otp}</div>
           <p style="font-size: 14px; color: #7f8c8d;">This code will expire in 10 minutes.</p>
         </div>
-        <p style="font-size: 14px; color: #34495e; line-height: 1.6;">${text || 'Please use this code to verify your account. If you didn\'t request this, please ignore this email.'}</p>
+        <p style="font-size: 14px; color: #34495e; line-height: 1.6;">${text || "Please use this code to verify your account. If you didn't request this, please ignore this email."}</p>
         <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; text-align: center;">
           <p style="font-size: 12px; color: #95a5a6;">&copy; ${new Date().getFullYear()} Your Company Name. All rights reserved.</p>
         </div>
@@ -77,11 +82,11 @@ export const sendOTP = async (email, otp, subject = "Your Verification Code", te
 
     // Send OTP email
     const mailOptions = {
-      from: `"Your Company Name" <${process.env.GMAIL_USER}>`,
+      from: `"ArtBid" <${process.env.GMAIL_USER}>`,
       to: email,
       subject: subject,
-      text: `Your verification code is: ${otp}\n\nThis code will expire in 10 minutes.\n\n${text || 'Please use this code to verify your account. If you didn\'t request this, please ignore this email.'}`,
-      html: htmlContent
+      text: `Your verification code is: ${otp}\n\nThis code will expire in 10 minutes.\n\n${text || "Please use this code to verify your account. If you didn't request this, please ignore this email."}`,
+      html: htmlContent,
     };
 
     await transporter.sendMail(mailOptions);
@@ -99,7 +104,7 @@ export const sendEmail = async (to, subject, text, html = "") => {
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
         <h1 style="color: #2c3e50;">${subject}</h1>
         <div style="padding: 20px 0; border-bottom: 1px solid #e0e0e0;">
-          <p style="font-size: 16px; color: #34495e; line-height: 1.6;">${text.replace(/\n/g, '<br>')}</p>
+          <p style="font-size: 16px; color: #34495e; line-height: 1.6;">${text.replace(/\n/g, "<br>")}</p>
         </div>
         <div style="margin-top: 20px; text-align: center;">
           <p style="font-size: 12px; color: #95a5a6;">&copy; ${new Date().getFullYear()} Your Company Name. All rights reserved.</p>
@@ -108,11 +113,11 @@ export const sendEmail = async (to, subject, text, html = "") => {
     `;
 
     await transporter.sendMail({
-      from: `"Your Company Name" <${process.env.GMAIL_USER}>`,
+      from: `"ArtBid" <${process.env.GMAIL_USER}>`,
       to,
       subject,
       text,
-      html: html || defaultHtml
+      html: html || defaultHtml,
     });
   } catch (error) {
     console.error("[ERROR] Email sending failed:", error.message);
