@@ -31,41 +31,35 @@ export const createCategory = async (req, res) => {
       req.ip
     );
 
-    res
-      .status(201)
-      .json({
-        success: true,
-        message: "Category created successfully",
-        category,
-      });
+    res.status(201).json({
+      success: true,
+      message: "Category created successfully",
+      category,
+    });
   } catch (error) {
     console.error("[ERROR] Creating category:", error);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Error creating category",
-        error: error.message,
-      });
+    res.status(500).json({
+      success: false,
+      message: "Error creating category",
+      error: error.message,
+    });
   }
 };
 
 /**
- * ✅ Get all categories
+ * ✅ Get all Categories
  */
 export const getCategories = async (req, res) => {
   try {
     const categories = await Category.find().sort({ name: 1 });
     res.status(200).json({ success: true, categories });
   } catch (error) {
-    console.error("[ERROR] Fetching categories:", error);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Error fetching categories",
-        error: error.message,
-      });
+    console.error("[ERROR] Fetching Categories:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching Categories",
+      error: error.message,
+    });
   }
 };
 
@@ -102,22 +96,18 @@ export const updateCategory = async (req, res) => {
       req.ip
     );
 
-    res
-      .status(200)
-      .json({
-        success: true,
-        message: "Category updated successfully",
-        category,
-      });
+    res.status(200).json({
+      success: true,
+      message: "Category updated successfully",
+      category,
+    });
   } catch (error) {
     console.error("[ERROR] Updating category:", error);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Error updating category",
-        error: error.message,
-      });
+    res.status(500).json({
+      success: false,
+      message: "Error updating category",
+      error: error.message,
+    });
   }
 };
 
@@ -148,12 +138,10 @@ export const deleteCategory = async (req, res) => {
       .json({ success: true, message: "Category deleted successfully" });
   } catch (error) {
     console.error("[ERROR] Deleting category:", error);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Error deleting category",
-        error: error.message,
-      });
+    res.status(500).json({
+      success: false,
+      message: "Error deleting category",
+      error: error.message,
+    });
   }
 };

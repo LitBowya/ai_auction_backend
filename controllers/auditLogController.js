@@ -24,7 +24,7 @@ export const getAuditLogs = async (req, res) => {
     const logs = await AuditLog.find().populate("user", "name email");
 
     if (!logs.length) {
-      return res.status(404).json({ message: "No audit logs found" });
+      return res.status(200).json({ message: "No audit logs found" });
     }
 
     res.status(200).json({

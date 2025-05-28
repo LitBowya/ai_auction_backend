@@ -1,7 +1,6 @@
 import express from "express";
 import xss from "xss-clean";
 import cors from "cors";
-import helmet from "helmet";
 import compression from "compression";
 import dotenv from "dotenv";
 import bodyParser from "body-parser";
@@ -65,7 +64,7 @@ app.use(
 );
 // Add Vary header for proper caching
 app.use((req, res, next) => {
-  res.header('Vary', 'Origin');
+  res.header("Vary", "Origin");
   next();
 });
 app.use(cookieParser());
@@ -73,12 +72,11 @@ app.use(compression());
 app.use(express.json({ limit: "100mb" }));
 app.use(bodyParser.json({ limit: "100mb" }));
 app.use(bodyParser.urlencoded({ limit: "100mb", extended: true }));
-
 app.use(xss());
 
 const limiter = rateLimit({
   windowMs: 100 * 60 * 1000, // 5 minutes
-  max: 500, // Limit each IP to 100 requests per window
+  max: 1000, // Limit each IP to 100 requests per window
   standardHeaders: true, // Return rate limit info in headers
   legacyHeaders: false, // Disable `X-RateLimit-*` headers
 });
@@ -90,18 +88,18 @@ app.get("/", (req, res) => {
 
 // Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/artworks", artworkRoutes);
-app.use("/api/auctions", auctionRoutes);
+app.use("/api/Artworks", artworkRoutes);
+app.use("/api/Auctions", auctionRoutes);
 app.use("/api/bids", bidRoutes);
-app.use("/api/audits", auditRoutes);
+app.use("/api/Audits", auditRoutes);
 app.use("/api/notifications", notificationRoutes);
-app.use("/api/payments", paymentRoutes);
+app.use("/api/Payments", paymentRoutes);
 app.use("/api/shipping", shippingRoutes);
 app.use("/api/category", categoryRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/contact", contactRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/orders", orderRoutes);
+app.use("/api/Users", userRoutes);
+app.use("/api/Orders", orderRoutes);
 
 // Error handling middleware
 app.use(notFound);

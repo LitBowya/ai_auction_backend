@@ -5,7 +5,7 @@ import { checkAIImage } from "../utils/sightengineCheck.js";
 import fs from "fs";
 import path from "path";
 import { promisify } from "util";
-import { rm } from 'fs/promises';
+import { rm } from "fs/promises";
 import archiver from "archiver";
 import ZIP from "archiver-zip-encrypted";
 
@@ -17,7 +17,7 @@ if (!archiver._formatRegistered?.has("zip-encrypted")) {
 const writeFileAsync = promisify(fs.writeFile);
 
 export const uploadArtwork = async (req, res) => {
-  const tmpDir = path.join(process.cwd(), 'tmp')
+  const tmpDir = path.join(process.cwd(), "tmp");
 
   try {
     const { title, description, category } = req.body;
@@ -37,7 +37,6 @@ export const uploadArtwork = async (req, res) => {
 
     let uploadedImages = [];
     let pptxData = null;
-
 
     // ✅ Handle Image Uploads
     for (let file of imageFiles) {
@@ -125,7 +124,7 @@ export const uploadArtwork = async (req, res) => {
 
       // Upload to Cloudinary
       const zipUpload = await cloudinary.uploader.upload(zipPath, {
-        folder: "artworks/pptx",
+        folder: "Artworks/pptx",
         resource_type: "raw",
       });
 
@@ -163,28 +162,44 @@ export const uploadArtwork = async (req, res) => {
       // OR for older Node.js:
       // await rmdir(tmpDir, { recursive: true });
     } catch (cleanupError) {
-      console.error("⚠ Failed to delete tmp folder (non-critical):", cleanupError);
+      console.error(
+        "⚠ Failed to delete tmp folder (non-critical):",
+        cleanupError
+      );
     }
   }
 };
 
-/**
- * Get all artworks
- */
 export const getAllArtworks = async (req, res) => {
   try {
-    const artworks = await Artwork.find().populate("category", "name");
+    const { page = 1, limit = 10, search = "" } = req.query;
+
+    const query = search ? { title: { $regex: search, $options: "i" } } : {};
+
+    const artworks = await Artwork.find(query)
+      .populate("category", "name")
+      .skip((page - 1) * limit)
+      .limit(Number(limit))
+      .sort({ createdAt: -1 });
+
+    const total = await Artwork.countDocuments(query);
 
     res.status(200).json({
       status: "success",
-      message: "Successfully fetched artworks",
+      message: "Successfully fetched Artworks",
       artworks,
+      pagination: {
+        total,
+        page: Number(page),
+        limit: Number(limit),
+        totalPages: Math.ceil(total / limit),
+      },
     });
   } catch (error) {
-    console.error("[ERROR] Fetching artworks:", error.message);
+    console.error("[ERROR] Fetching Artworks:", error.message);
     res.status(500).json({
       status: "error",
-      message: "Error fetching artworks",
+      message: "Error fetching Artworks",
       error: error.message,
     });
   }
@@ -220,27 +235,77 @@ export const getArtwork = async (req, res) => {
   }
 };
 
-/**
- * Get artworks of the logged-in user
- */
-export const getUserArtworks = async (req, res) => {
+export const updateArtwork = async (req, res) => {
   try {
-    const userId = req.user._id;
-    const artworks = await Artwork.find({ userId }).populate(
-      "category",
-      "name"
+    const { id } = req.params;
+    const { title, description, category } = req.body;
+
+    // Handle image uploads
+    let imageUpdates = [];
+    if (req.files?.images) {
+      const imageUploads = req.files.images.map(file =>
+        cloudinary.uploader.upload(file.path)
+      );
+      imageUpdates = await Promise.all(imageUploads);
+    }
+
+    // Handle PPTX upload
+    let pptxUpdate = null;
+    if (req.files?.pptx) {
+      pptxUpdate = await cloudinary.uploader.upload(req.files.pptx[0].path, {
+        resource_type: "raw"
+      });
+    }
+
+    // Build update object
+    const updateData = {
+      title,
+      description,
+      category,
+      ...(imageUpdates.length > 0 && {
+        imageUrl: imageUpdates.map(img => ({
+          url: img.secure_url,
+          publicId: img.public_id
+        }))
+      }),
+      ...(pptxUpdate && {
+        pptx: {
+          url: pptxUpdate.secure_url,
+          publicId: pptxUpdate.public_id
+        }
+      })
+    };
+
+    const updatedArtwork = await Artwork.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true, runValidators: true }
+    ).populate("category", "name");
+
+    if (!updatedArtwork) {
+      return res.status(404).json({
+        status: "error",
+        message: "Artwork not found",
+      });
+    }
+
+    await logAction(
+      req.user,
+      "Artwork Updated",
+      `Updated Artwork ID: ${id}`,
+      req.ip
     );
 
     res.status(200).json({
       status: "success",
-      message: "Successfully fetched your artworks",
-      artworks,
+      message: "Artwork updated successfully",
+      artwork: updatedArtwork,
     });
   } catch (error) {
-    console.error("[ERROR] Fetching user artworks:", error.message);
+    console.error("[ERROR] Updating artwork:", error.message);
     res.status(500).json({
       status: "error",
-      message: "Error fetching user artworks",
+      message: "Error updating artwork",
       error: error.message,
     });
   }

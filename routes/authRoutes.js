@@ -5,7 +5,7 @@ import {
   loginUser,
   requestPasswordReset,
   resetPassword,
-  logoutUser
+  logoutUser,
 } from "../controllers/authController.js";
 
 const router = express.Router();
@@ -13,7 +13,7 @@ const router = express.Router();
 router.post("/register", registerUser);
 router.post("/verify-otp", verifyUserOTP);
 router.post("/login", loginUser);
-router.post('/logout', logoutUser);
+router.post("/logout", logoutUser);
 router.post("/forgot-password", requestPasswordReset);
 router.post("/reset-password", resetPassword);
 

@@ -76,3 +76,37 @@ export const getDefaultShipping = async (req, res) => {
     });
   }
 };
+
+/**
+ * 🔹 Get Default Shipping Details for the Buyer
+ */
+export const getAllUserShipping = async (req, res) => {
+  try {
+    // Find the default shipping details for the buyer
+    const shipping = await Shipping.find({
+      buyer: req.user._id,
+    });
+
+    // If no default shipping details found, return a 404 error
+    if (!shipping) {
+      return res.status(404).json({
+        success: false,
+        message: "No default shipping details found",
+      });
+    }
+
+    // Return the default shipping details
+    res.status(200).json({
+      success: true,
+      message: "Default shipping details retrieved successfully",
+      shipping,
+    });
+  } catch (error) {
+    console.error("[ERROR] Error fetching default shipping:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching default shipping",
+      error: error.message,
+    });
+  }
+};

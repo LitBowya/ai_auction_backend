@@ -1,5 +1,5 @@
 import express from "express";
-import { protect } from "../middleware/authMiddleware.js";
+import { isAdmin, protect } from "../middleware/authMiddleware.js";
 import {
   getAdminGraphInsights,
   getAdminInsights,
@@ -7,7 +7,7 @@ import {
 
 const router = express.Router();
 
-router.get("/", protect, getAdminInsights);
-router.get("/insights", protect, getAdminGraphInsights);
+router.get("/", protect, isAdmin, getAdminInsights);
+router.get("/insights", protect, isAdmin, getAdminGraphInsights);
 
 export default router;

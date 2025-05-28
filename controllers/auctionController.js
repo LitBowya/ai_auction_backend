@@ -2,7 +2,7 @@ import Auction from "../models/Auction.js";
 import Artwork from "../models/Artwork.js";
 import { notifyHighestBidder } from "../utils/notification.js";
 import mongoose from "mongoose";
-import agenda from '../config/agenda.js';
+import agenda from "../config/agenda.js";
 import { logAction } from "./auditLogController.js";
 
 /**
@@ -89,19 +89,14 @@ export const createAuction = async (req, res) => {
     });
 
     // Schedule job to start the auction using Agenda
-    await agenda.schedule(
-      new Date(startingTime),
-      'startAuction',
-      { auctionId: auction._id.toString() }
-    );
+    await agenda.schedule(new Date(startingTime), "startAuction", {
+      auctionId: auction._id.toString(),
+    });
 
     // Schedule job to end the auction
-    await agenda.schedule(
-      new Date(biddingEndTime),
-      'endAuction',
-      { auctionId: auction._id.toString() }
-    );
-
+    await agenda.schedule(new Date(biddingEndTime), "endAuction", {
+      auctionId: auction._id.toString(),
+    });
 
     // Respond with the auction data along with the artwork
     res.status(201).json({
@@ -109,7 +104,7 @@ export const createAuction = async (req, res) => {
       message: "Auction created successfully and scheduled",
       data: {
         auction,
-        artwork,  // Include the artwork in the response
+        artwork, // Include the artwork in the response
       },
     });
   } catch (error) {
@@ -156,6 +151,12 @@ export const endAuction = async (req, res) => {
 
     if (auction.status === "active") {
       auction.status = "completed";
+      auction.biddingEndTime = new Date();
+      // Optionally cancel the scheduled endAuction job
+      await agenda.cancel({
+        name: "endAuction",
+        auctionId: auction._id.toString(),
+      });
       await auction.save();
 
       // Notify the highest bidder
@@ -189,38 +190,71 @@ export const endAuction = async (req, res) => {
 };
 
 /**
- * Get all active auctions
+ * Get all active Auctions
  */
 export const getActiveAuctions = async (req, res) => {
   try {
     const auctions = await Auction.find({ status: "active" })
-      .populate("artwork")
-      .populate("title, description, imageUrl, category");
+      .populate("artwork", "title description imageUrl")
+      .populate("highestBidder")
+      .sort({ createdAt: -1 });
 
     if (auctions.length === 0) {
       return res.status(200).json({
         success: true,
-        message: "No active auctions found",
+        message: "No active Auctions found",
         data: [],
       });
     }
 
     res.status(200).json({
       success: true,
-      message: "Active auctions retrieved successfully",
+      message: "Active Auctions retrieved successfully",
       data: auctions,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Error fetching active auctions",
+      message: "Error fetching active Auctions",
       error: error.message,
     });
   }
 };
 
 /**
- * Get all auctions
+ * Get all active Auctions
+ */
+export const getCompletedAuctions = async (req, res) => {
+  try {
+    const auctions = await Auction.find({ status: "completed" })
+      .populate("artwork", "title description imageUrl")
+      .populate("highestBidder")
+      .sort({ createdAt: -1 });
+
+    if (auctions.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: "No active Auctions found",
+        data: [],
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Active Auctions retrieved successfully",
+      data: auctions,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error fetching active Auctions",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Get all Auctions
  */
 export const getAllAuctions = async (req, res) => {
   try {
@@ -232,19 +266,20 @@ export const getAllAuctions = async (req, res) => {
 
     let filter = {};
     if (status === "active") {
-      filter = { biddingEndTime: { $gt: now } }; // Active auctions
+      filter = { biddingEndTime: { $gt: now } }; // Active Auctions
     } else if (status === "past") {
-      filter = { biddingEndTime: { $lt: now } }; // Past auctions
+      filter = { biddingEndTime: { $lt: now } }; // Past Auctions
     } else if (status === "upcoming") {
-      filter = { biddingStartTime: { $gt: now } }; // Upcoming auctions
+      filter = { biddingStartTime: { $gt: now } }; // Upcoming Auctions
     } else if (status === "all" || !status) {
-      // If status is "all" or not provided, fetch all auctions
-      filter = {}; // No filter, will return all auctions
+      // If status is "all" or not provided, fetch all Auctions
+      filter = {}; // No filter, will return all Auctions
     }
 
     const auctions = await Auction.find(filter)
       .populate("artwork", "title description imageUrl")
-      .sort({ biddingEndTime: 1 })
+      .populate("highestBidder")
+      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
@@ -264,7 +299,7 @@ export const getAllAuctions = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Error fetching auctions",
+      message: "Error fetching Auctions",
       error: error.message,
     });
   }
@@ -323,7 +358,7 @@ export const getLatestAuction = async (req, res) => {
     if (!latestAuction) {
       return res.status(404).json({
         success: false,
-        message: "No auctions found.",
+        message: "No Auctions found.",
       });
     }
 

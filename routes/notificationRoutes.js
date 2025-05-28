@@ -1,5 +1,5 @@
 import express from "express";
-import { protect } from "../middleware/authMiddleware.js";
+import { isAdmin, protect } from "../middleware/authMiddleware.js";
 import {
   getNotifications,
   markNotificationsAsRead,
@@ -7,10 +7,8 @@ import {
 
 const router = express.Router();
 
+router.get("/", protect, isAdmin, getNotifications);
 
-router.get("/", getNotifications);
-
-
-router.put("/", markNotificationsAsRead);
+router.put("/", protect, isAdmin, markNotificationsAsRead);
 
 export default router;

@@ -47,7 +47,7 @@ export const getAdminGraphInsights = async (req, res) => {
       { $sort: { _id: 1 } },
     ]);
 
-    // Fetch active auctions over time (monthly)
+    // Fetch active Auctions over time (monthly)
     const activeAuctionsOverTime = await Auction.aggregate([
       {
         $match: { status: "active" },
@@ -61,7 +61,7 @@ export const getAdminGraphInsights = async (req, res) => {
       { $sort: { _id: 1 } },
     ]);
 
-    // Fetch completed auctions over time (monthly)
+    // Fetch completed Auctions over time (monthly)
     const completedAuctionsOverTime = await Auction.aggregate([
       {
         $match: { status: "completed" },

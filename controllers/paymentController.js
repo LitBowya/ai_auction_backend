@@ -12,6 +12,7 @@ export const initiatePayment = async (req, res) => {
   try {
     const { auctionId } = req.params;
     const userId = req.user._id;
+    const { shippingId } = req.body;
 
     // Fetch the auction details
     const auction = await Auction.findById(auctionId).populate("highestBidder");
@@ -36,7 +37,7 @@ export const initiatePayment = async (req, res) => {
     }
 
     // Fetch the user's shipping details (if needed)
-    const shipping = await Shipping.findOne({ buyer: userId }); // Assuming shipping is tied to the user
+    const shipping = await Shipping.findById(shippingId); // Assuming shipping is tied to the user
     if (!shipping) {
       return res.status(404).json({
         success: false,
@@ -53,7 +54,7 @@ export const initiatePayment = async (req, res) => {
       email,
       amount,
       currency: "GHS",
-      callback_url: `${process.env.FRONTEND_URL}/payment-confirmation?reference={reference}`,
+      callback_url: `${process.env.FRONTEND_URL}/payment-confirmation`,
       metadata: { auctionId: auction._id, buyerId: auction.highestBidder._id },
     });
 
@@ -78,6 +79,7 @@ export const initiatePayment = async (req, res) => {
       success: true,
       message: "Payment link generated successfully",
       paymentUrl: response.data.authorization_url,
+      response,
     });
   } catch (error) {
     console.error("[ERROR] Payment initiation failed:", error.message);
@@ -87,12 +89,11 @@ export const initiatePayment = async (req, res) => {
   }
 };
 
-/**
- * 🔹 Paystack Webhook: Auto-Verify Payment
- */
 export const verifyPayment = async (req, res) => {
   try {
     const { auctionId } = req.params;
+    const { reference } = req.query;
+    const { shippingId } = req.body;
 
     // Find the auction and get the buyer (highestBidder)
     const auction = await Auction.findById(auctionId).populate("highestBidder");
@@ -100,6 +101,14 @@ export const verifyPayment = async (req, res) => {
       return res
         .status(404)
         .json({ success: false, message: "Auction not found" });
+    }
+
+    const shipping = await Shipping.findById(shippingId); // Assuming shipping is tied to the user
+    if (!shipping) {
+      return res.status(404).json({
+        success: false,
+        message: "No shipping details found for the user",
+      });
     }
 
     const buyerId = auction.highestBidder._id; // This is the buyer
@@ -115,7 +124,7 @@ export const verifyPayment = async (req, res) => {
     }
 
     // Check if the payment reference exists
-    if (!payment.reference) {
+    if (!reference) {
       return res.status(400).json({
         success: false,
         message: "Payment reference is missing",
@@ -125,7 +134,6 @@ export const verifyPayment = async (req, res) => {
     // Verify payment status with Paystack
     let response;
     try {
-      const reference = payment.reference;
       response = await paystack.transaction.verify({ reference });
     } catch (paystackError) {
       console.error(
@@ -156,41 +164,20 @@ export const verifyPayment = async (req, res) => {
       });
     }
 
-    // Find the buyer's shipping addresses
-    const shippingAddresses = await Shipping.find({ buyer: buyerId });
-    if (!shippingAddresses || shippingAddresses.length === 0) {
-      return res
-        .status(404)
-        .json({ success: false, message: "No shipping addresses found" });
-    }
+    const buyer = auction.highestBidder;
 
-    // If the frontend doesn't provide a shipping address, select the default one
-    let shipping;
-    const defaultShipping = shippingAddresses.find(
-      (address) => address.isDefault
-    );
-
-    if (defaultShipping) {
-      shipping = defaultShipping; // Use the default address
-    } else {
-      // If there's no default address, pick the first available address
-      shipping = shippingAddresses[shippingAddresses.length - 1];
-    }
+    // Update payment status to "paid"
+    payment.status = "paid";
+    payment.verified = true;
+    await payment.save();
 
     // Create the order
     const order = await Order.create({
       auction: auction._id,
       buyer: auction.highestBidder._id,
       payment: payment._id,
-      shipping: shipping._id, // Link the shipping address
-      status: "shipped",
+      shipping: shipping._id,
     });
-
-    const buyer = auction.highestBidder._id.email
-    // Update payment status to "paid"
-    payment.status = "paid";
-    payment.verified = true;
-    await payment.save();
 
     // Notify Admin (Seller)
     await sendEmail(
@@ -221,7 +208,11 @@ export const verifyPayment = async (req, res) => {
 export const confirmShipment = async (req, res) => {
   try {
     const { paymentId } = req.params;
-    const payment = await Payment.findById(paymentId); //Corrected findById usage.
+
+    // Find payment and populate necessary relationships
+    const payment = await Payment.findById(paymentId)
+      .populate("buyer")
+      .populate("shipping");
 
     if (!payment) {
       return res.status(404).json({
@@ -230,19 +221,36 @@ export const confirmShipment = async (req, res) => {
       });
     }
 
+    // Update payment status
     payment.status = "shipped";
     payment.shipmentConfirmed = true;
     await payment.save();
 
+    // Update associated order status
+    const order = await Order.findOneAndUpdate(
+      { payment: paymentId },
+      {
+        status: "shipped",
+      },
+      { new: true }
+    );
+
+    if (!order) {
+      console.warn(`Payment ${paymentId} has no associated order`);
+    }
+
+    // Send shipping confirmation email
     await sendEmail(
       payment.buyer.email,
-      "Artwork shipped",
-      "Your bought product have been shipped."
+      "Artwork Shipped 🚚",
+      `Your artwork has been shipped!. \\n. Check your profile to see order details`
     );
 
     res.status(200).json({
       success: true,
-      message: "Shipment confirmed",
+      message: "Shipment confirmed and order updated",
+      payment,
+      order,
     });
   } catch (error) {
     res.status(500).json({
@@ -258,7 +266,7 @@ export const getAllPayment = async (req, res) => {
     const payments = await Payment.find({}).populate("buyer", "name");
 
     if (!payments) {
-      res.status(404).json({ success: false, message: "No payments found" });
+      res.status(404).json({ success: false, message: "No Payments found" });
     }
 
     res.status(200).json({
@@ -267,7 +275,7 @@ export const getAllPayment = async (req, res) => {
       payments,
     });
   } catch (error) {
-    console.error("[ERROR] Fetching payments", error.message);
+    console.error("[ERROR] Fetching Payments", error.message);
     res.status(500).json({ success: false, message: error.message });
   }
 };

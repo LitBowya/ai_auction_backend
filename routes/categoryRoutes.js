@@ -9,9 +9,9 @@ import {
 
 const router = express.Router();
 
-router.post("/",protect, createCategory);
+router.post("/", protect, isAdmin, createCategory);
 router.get("/", getCategories);
-router.put("/:categoryId",protect, updateCategory);
-router.delete("/:categoryId",protect, deleteCategory);
+router.put("/:categoryId", protect, isAdmin, updateCategory);
+router.delete("/:categoryId", protect, isAdmin, deleteCategory);
 
 export default router;

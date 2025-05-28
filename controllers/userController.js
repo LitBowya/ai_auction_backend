@@ -10,6 +10,7 @@ import mongoose from "mongoose";
 export const getUserProfile = async (req, res) => {
   try {
     const { userId } = req.params; // Extract userId from URL parameters
+    console.log("Profile", userId);
     const user = await User.findById(userId).select("-password");
     if (!user) {
       return res
@@ -56,52 +57,53 @@ export const updateUserProfile = async (req, res) => {
 export const getUserOrders = async (req, res) => {
   try {
     const { userId } = req.params;
-    
+
+    console.log("Orders", userId);
+
     // Validate userId format
     if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Invalid user ID format" 
+      return res.status(400).json({
+        success: false,
+        message: "Invalid user ID format",
       });
     }
 
     const orders = await Order.find({ buyer: userId })
       .populate({
-        path: 'auction',
+        path: "auction",
         populate: [
           {
-            path: 'artwork',
-            select: 'title description imageUrl category createdAt pptxFile',
+            path: "artwork",
+            select: "title description imageUrl category createdAt pptxFile",
           },
           {
-            path: 'highestBidder',
-            select: 'name email'
-          }
-        ]
+            path: "highestBidder",
+            select: "name email",
+          },
+        ],
       })
-      .populate('payment', 'status amount') // Only get payment status and amount
-      .populate('shipping', 'address') // Only get shipping essentials
+      .populate("payment", "status amount") // Only get payment status and amount
+      .populate("shipping", "address") // Only get shipping essentials
       .sort({ createdAt: -1 }); // Sort by newest first
 
     if (!orders || orders.length === 0) {
-      return res.status(200).json({ 
-        success: true, 
-        message: "No orders found",
-        orders: [] 
+      return res.status(200).json({
+        success: true,
+        message: "No Orders found",
+        orders: [],
       });
     }
 
-    res.status(200).json({ 
-      success: true, 
-      orders 
+    res.status(200).json({
+      success: true,
+      orders,
     });
-
   } catch (error) {
-    console.error("[ERROR] Fetching user orders failed:", error);
-    res.status(500).json({ 
-      success: false, 
-      message: "Failed to fetch orders",
-      error: error.message 
+    console.error("[ERROR] Fetching user Orders failed:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch Orders",
+      error: error.message,
     });
   }
 };
@@ -112,20 +114,20 @@ export const getUserOrders = async (req, res) => {
 export const getUserPayments = async (req, res) => {
   try {
     const { userId } = req.params; // Extract userId from URL parameters
-    const payments = await Payment.find({ buyer: userId })
-    .populate({
-        path: "auction",
-        populate: {
-            path: "artwork" // Populating the `artwork` inside `auction`
-        }
+    console.log("Payments", userId);
+    const payments = await Payment.find({ buyer: userId }).populate({
+      path: "auction",
+      populate: {
+        path: "artwork", // Populating the `artwork` inside `auction`
+      },
     });
 
     res.status(200).json({ success: true, payments });
   } catch (error) {
-    console.error("[ERROR] Fetching user payments failed:", error.message);
+    console.error("[ERROR] Fetching user Payments failed:", error.message);
     res
       .status(500)
-      .json({ success: false, message: "Failed to fetch payments" });
+      .json({ success: false, message: "Failed to fetch Payments" });
   }
 };
 
@@ -135,32 +137,35 @@ export const getUserPayments = async (req, res) => {
 export const getUserAuctions = async (req, res) => {
   try {
     const { userId } = req.params; // Extract userId from URL parameters
-    const auctions = await Auction.find({ highestBidder: userId }).populate("artwork");
+    console.log("Auctions", userId);
+    const auctions = await Auction.find({ highestBidder: userId }).populate(
+      "artwork"
+    );
     res.status(200).json({ success: true, auctions });
   } catch (error) {
-    console.error("[ERROR] Fetching user auctions failed:", error.message);
+    console.error("[ERROR] Fetching user Auctions failed:", error.message);
     res
       .status(500)
-      .json({ success: false, message: "Failed to fetch auctions" });
+      .json({ success: false, message: "Failed to fetch Auctions" });
   }
 };
 
-
 export const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find()
-      .sort({ createdAt: -1 })
+    const users = await User.find().sort({ createdAt: -1 });
 
     if (!users || users.length === 0) {
-      return res.status(404).json({ success: false, message: "Users not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Users not found" });
     }
 
     res.status(200).json({ success: true, users });
   } catch (error) {
-    console.error("[ERROR] Fetching users:", error);
+    console.error("[ERROR] Fetching Users:", error);
     res.status(500).json({
       success: false,
-      message: "Error fetching users",
+      message: "Error fetching Users",
       error: error.message,
     });
   }

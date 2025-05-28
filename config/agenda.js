@@ -1,27 +1,25 @@
 // agenda.js
-import { Agenda } from 'agenda';
-import mongoose from 'mongoose';
+import { Agenda } from "agenda";
+import mongoose from "mongoose";
 
 // Create an Agenda instance
 const agenda = new Agenda({
-  db: { 
+  db: {
     address: process.env.MONGO_URI,
-    collection: 'agendaJobs' 
+    collection: "agendaJobs",
   },
-  processEvery: '30 seconds'
+  processEvery: "30 seconds",
 });
 
 // Define the auction start job
-agenda.define('startAuction', async (job) => {
+agenda.define("startAuction", async (job) => {
   const { auctionId } = job.attrs.data;
-  
+
   try {
     // Update auction status to active
-    await mongoose.model('Auction').findByIdAndUpdate(
-      auctionId,
-      { status: 'active' },
-      { new: true }
-    );
+    await mongoose
+      .model("Auction")
+      .findByIdAndUpdate(auctionId, { status: "active" }, { new: true });
     console.log(`Auction ${auctionId} started successfully`);
   } catch (error) {
     console.error(`Error starting auction ${auctionId}:`, error);
@@ -29,18 +27,18 @@ agenda.define('startAuction', async (job) => {
 });
 
 // Define the auction end job
-agenda.define('endAuction', async (job) => {
+agenda.define("endAuction", async (job) => {
   const { auctionId } = job.attrs.data;
-  
+
   try {
-    const auction = await mongoose.model('Auction').findById(auctionId);
-    
+    const auction = await mongoose.model("Auction").findById(auctionId);
+
     if (!auction) {
       console.error(`Auction ${auctionId} not found`);
       return;
     }
-    
-    auction.status = 'completed';
+
+    auction.status = "completed";
 
     await auction.save();
     console.log(`Auction ${auctionId} ended successfully`);
@@ -50,9 +48,9 @@ agenda.define('endAuction', async (job) => {
 });
 
 // Start Agenda
-(async function() {
+(async function () {
   await agenda.start();
-  console.log('Agenda started');
+  console.log("Agenda started");
 })();
 
 export default agenda;
