@@ -58,8 +58,6 @@ export const getUserOrders = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    console.log("Orders", userId);
-
     // Validate userId format
     if (!mongoose.Types.ObjectId.isValid(userId)) {
       return res.status(400).json({

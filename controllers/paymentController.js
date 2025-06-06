@@ -131,6 +131,15 @@ export const verifyPayment = async (req, res) => {
       });
     }
 
+    const existingOrder = await Order.findOne({ payment: payment._id });
+    if (existingOrder) {
+      return res.status(200).json({
+        success: true,
+        message: "Order already exists for this payment.",
+        orderId: existingOrder._id,
+      });
+    }
+
     // Verify payment status with Paystack
     let response;
     try {
