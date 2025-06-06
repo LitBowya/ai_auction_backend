@@ -33,9 +33,22 @@ connectDB();
 
 const app = express();
 
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  // Add any other origins if needed
+];
+
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL,
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps, curl, etc)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.indexOf(origin) === -1) {
+        return callback(null, allowedOrigins[0]); // Default to frontend URL
+      }
+      return callback(null, true);
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
