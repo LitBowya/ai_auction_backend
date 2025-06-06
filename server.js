@@ -33,30 +33,9 @@ connectDB();
 
 const app = express();
 
-// Middleware
-// Set trust proxy based on your deployment scenario
-if (process.env.NODE_ENV === "production") {
-  app.set("trust proxy", 1); // Trust first proxy if behind a reverse proxy
-} else {
-  app.set("trust proxy", false); // Disable trust proxy in development
-}
-
-const allowedOrigins = [
-  process.env.FRONTEND_URL,
-  // Add any other origins if needed
-];
-
 app.use(
   cors({
-    origin: function (origin, callback) {
-      // Allow requests with no origin (like mobile apps, curl, etc)
-      if (!origin) return callback(null, true);
-
-      if (allowedOrigins.indexOf(origin) === -1) {
-        return callback(null, allowedOrigins[0]); // Default to frontend URL
-      }
-      return callback(null, true);
-    },
+    origin: process.env.FRONTEND_URL,
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
